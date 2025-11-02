@@ -1,47 +1,38 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
-
-/** ------------------------------------------------
- *  Types
- *  ------------------------------------------------ */
-type CountryData = {
-  policy?: {
-    nonNuclearWaste?: string;
-    disusedSources?: string;
-    nuclearFuelCycleWaste?: string;
-    spentFuel?: string;
-  };
-  wmo?: {
-    name?: string;
-    responsibilities?: string;
-    ownership?: string;
-    cite?: string;
-  };
-  funding?: {
-    rwm?: string;
-    sf_hlw?: string;
-    decommissioning?: string;
-    cite?: string;
-  };
-  reactors?: {
-    inOperation?: number;
-    underConstruction?: number;
-    decommissioningUnits?: number;
-    note?: string;
-    cite?: string;
-  };
-};
-
-type ExtraData = Partial<CountryData> & {
-  population?: number;
-  capital?: string;
-  note?: string;
-};
+import { supabase } from "./lib/supabase";
 
 // react-simple-maps feature light type
 type RSMFeature = {
   rsmKey: string;
   properties: Record<string, unknown>;
+};
+
+type CountryFull = {
+  iso3: string;
+  name: string | null;
+  capital: string | null;
+  population: number | null;
+  note: string | null;
+  continent: string | null;
+  non_nuclear_waste?: string | null;
+  disused_sources?: string | null;
+  nuclear_fuel_waste?: string | null;
+  spent_fuel?: string | null;
+  policy_cite?: string | null;
+  wmo_name?: string | null;
+  wmo_responsibilities?: string | null;
+  wmo_ownership?: string | null;
+  wmo_cite?: string | null;
+  rwm?: string | null;
+  sf_hlw?: string | null;
+  decommissioning?: string | null;
+  funding_cite?: string | null;
+  in_operation?: number | null;
+  under_construction?: number | null;
+  reactor_decom?: number | null;
+  reactor_note?: string | null;
+  reactor_cite?: string | null;
 };
 
 /** ------------------------------------------------
@@ -75,7 +66,7 @@ const NAME_TO_ISO3: Record<string, string> = {
 };
 
 /** ------------------------------------------------
- *  Modal
+ *  UI bits
  *  ------------------------------------------------ */
 function Modal({
   open,
@@ -112,9 +103,6 @@ function Modal({
   );
 }
 
-/** ------------------------------------------------
- *  Tooltip
- *  ------------------------------------------------ */
 function Tooltip({
   x,
   y,
@@ -137,176 +125,35 @@ function Tooltip({
 /** ------------------------------------------------
  *  Utils
  *  ------------------------------------------------ */
-function formatNumber(n?: number) {
+function formatNumber(n?: number | null) {
   if (typeof n !== "number") return "—";
   return n.toLocaleString();
 }
 
 /** ------------------------------------------------
- *  Data (examples + a few filled countries)
- *  ------------------------------------------------ */
-const EXTRA_DATA: Record<string, ExtraData> = {
-  TUR: {
-    capital: "Ankara",
-    population: 84339067,
-    note: "Bridge between Europe and Asia.",
-    policy: {
-      nonNuclearWaste: "Storage",
-      disusedSources: "Return to supplier or storage",
-      nuclearFuelCycleWaste: "Storage and disposal",
-      spentFuel: "Long-term storage at NPP site",
-    },
-    wmo: {
-      name: "TENMAK",
-      responsibilities: "Management of radioactive waste",
-      ownership: "State",
-      cite: "IAEA Status & Trends 2024 (Annex 3)",
-    },
-    funding: {
-      rwm: "Producers pay (Radioactive Waste Management Account)",
-      sf_hlw: "Producers pay fee to Radioactive Waste Management Account",
-      decommissioning: "Operators pay fee to Decommissioning Account",
-      cite: "IAEA Status & Trends 2024 (Annex 4)",
-    },
-  },
-  ZAF: {
-    capital: "Pretoria / Cape Town / Bloemfontein",
-    population: 59308690,
-    policy: {
-      nonNuclearWaste:
-        "Existing near-surface disposal at Vaalputs (possible medium depth for long lived)",
-      disusedSources: "Return to supplier or storage",
-      nuclearFuelCycleWaste:
-        "Existing near-surface disposal at Vaalputs; possible medium depth for long lived",
-      spentFuel:
-        "Long-term storage; possible reprocessing or disposal in a DGR",
-    },
-    wmo: {
-      name: "NRWDI",
-      responsibilities: "Management of radioactive waste and spent fuel",
-      ownership: "State",
-      cite: "IAEA Status & Trends 2024 (Annex 3)",
-    },
-    funding: {
-      rwm: "Producers pay",
-      sf_hlw: "Producers' responsibility",
-      decommissioning: "Owners/Waste producers pay",
-      cite: "IAEA Status & Trends 2024 (Annex 4)",
-    },
-  },
-  SWE: {
-    capital: "Stockholm",
-    policy: {
-      nonNuclearWaste:
-        "Disposal in nuclear fuel cycle facilities when appropriate",
-      disusedSources: "Return to supplier or stored/disposed",
-      nuclearFuelCycleWaste:
-        "Existing LLW disposal; planned long-lived waste facility; geological disposal",
-      spentFuel: "Planned DGR at Forsmark",
-    },
-    wmo: {
-      name: "SKB",
-      responsibilities:
-        "Development and operation of storage and disposal facilities for all radioactive waste and spent fuel",
-      ownership: "Utilities",
-      cite: "IAEA Status & Trends 2024 (Annex 3)",
-    },
-    funding: {
-      rwm: "Producers pay",
-      sf_hlw: "Nuclear Waste Fund (fee on nuclear power production)",
-      decommissioning: "Included in Nuclear Waste Fund fee",
-      cite: "IAEA Status & Trends 2024 (Annex 4)",
-    },
-  },
-  GBR: {
-    capital: "London",
-    policy: {
-      nonNuclearWaste:
-        "Existing surface disposal (LLWR, Dounreay); VLLW via conventional landfill; other facilities may be developed if required",
-      disusedSources: "Return to supplier or storage",
-      nuclearFuelCycleWaste:
-        "Existing surface disposal for suitable classes; other facilities may be developed if required",
-      spentFuel: "Disposal in a deep geological repository (DGR)",
-    },
-    wmo: {
-      name: "NDA",
-      responsibilities:
-        "Overseeing strategic management of radioactive waste and spent fuel including historic liabilities",
-      ownership: "State",
-      cite: "IAEA Status & Trends 2024 (Annex 3)",
-    },
-    funding: {
-      rwm: "Producers pay",
-      sf_hlw:
-        "Producers' responsibility; Government support; Nuclear Liabilities Fund",
-      decommissioning:
-        "Government funding for NDA estate; AGR/PWR via Nuclear Liabilities Fund",
-      cite: "IAEA Status & Trends 2024 (Annex 4)",
-    },
-  },
-  USA: {
-    capital: "Washington, D.C.",
-    population: 331002651,
-    policy: {
-      nonNuclearWaste: "LLW near-surface disposal; ILW path to be determined",
-      disusedSources: "Return to supplier; disposal, reuse or recycle",
-      nuclearFuelCycleWaste:
-        "HLW disposal in geological repository; LLW near-surface disposal",
-      spentFuel: "Geological disposal after storage in wet or dry storage",
-    },
-    wmo: {
-      name: "DOE (federal); States/Compacts for LLW",
-      responsibilities:
-        "DOE: disposal for SF, certain ILW (GTCC), DOE-owned RW; States/Compacts: LLW",
-      ownership: "State / State-compact system",
-      cite: "IAEA Status & Trends 2024 (Annex 3)",
-    },
-    funding: {
-      rwm: "Producers pay; public facilities via government funding",
-      sf_hlw: "Nuclear Waste Fund (payments suspended)",
-      decommissioning:
-        "NPP decommissioning funds; producer pays for non-legacy sites",
-      cite: "IAEA Status & Trends 2024 (Annex 4)",
-    },
-  },
-  ESP: {
-    capital: "Madrid",
-    policy: {
-      nonNuclearWaste: "Existing surface disposal at El Cabril (VLLW/LLW)",
-      disusedSources: "Return to supplier or storage",
-      nuclearFuelCycleWaste:
-        "Existing surface disposal for VLLW/LLW; waste from SF reprocessing will be disposed together with SF",
-      spentFuel:
-        "≈60 years centralized storage or upgraded facilities until DGR available",
-    },
-    wmo: {
-      name: "ENRESA",
-      responsibilities:
-        "Development and operation of storage and disposal facilities for all RW and SF; decommissioning of reactors",
-      ownership: "State",
-      cite: "IAEA Status & Trends 2024 (Annex 3)",
-    },
-    funding: {
-      rwm: "Producers pay; payments for management services",
-      sf_hlw: "Fund from NPP operators and payments for services",
-      decommissioning: "Fund from NPP operators and payments for services",
-      cite: "IAEA Status & Trends 2024 (Annex 4)",
-    },
-  },
-  DEU: { capital: "Berlin", population: 83190556 },
-  BRA: { capital: "Brasília", population: 212559417 },
-  AUS: { capital: "Canberra", population: 25687041 },
-};
-
-/** ------------------------------------------------
  *  Component
  *  ------------------------------------------------ */
 export default function InteractiveWorldMapApp() {
-  const [selected, setSelected] = useState<any | null>(null);
+  const [selected, setSelected] = useState<{ NAME: string; ISO_A3: string; CONTINENT: string } | null>(null);
   const [hover, setHover] = useState<{ name: string; iso: string; x: number; y: number } | null>(null);
   const [query, setQuery] = useState("");
   const [focusedIso, setFocusedIso] = useState<string | null>(null);
-  const mapRef = useRef<HTMLDivElement | null>(null);
+
+  // DB
+  const [dbData, setDbData] = useState<CountryFull | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function loadCountry(iso3: string) {
+    setLoading(true);
+    setDbData(null);
+    const { data, error } = await supabase
+      .from("country_full")
+      .select("*")
+      .eq("iso3", iso3)
+      .maybeSingle();
+    if (!error) setDbData((data as CountryFull) ?? null);
+    setLoading(false);
+  }
 
   const legend = useMemo(() => Object.entries(CONTINENT_COLORS), []);
 
@@ -333,7 +180,7 @@ export default function InteractiveWorldMapApp() {
       </header>
 
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 p-4 lg:grid-cols-[1fr_320px]">
-        <div ref={mapRef} className="relative rounded-2xl bg-white p-2 shadow-sm ring-1 ring-black/5">
+        <div className="relative rounded-2xl bg-white p-2 shadow-sm ring-1 ring-black/5">
           <ComposableMap projectionConfig={{ scale: 160 }} className="w-full h-full">
             <ZoomableGroup
               center={[0, 20]}
@@ -377,6 +224,7 @@ export default function InteractiveWorldMapApp() {
                         onClick={() => {
                           setSelected({ NAME, ISO_A3, CONTINENT });
                           setFocusedIso(ISO_A3);
+                          loadCountry(ISO_A3);
                         }}
                         style={{
                           default: {
@@ -430,11 +278,12 @@ export default function InteractiveWorldMapApp() {
       </main>
 
       <footer className="mx-auto max-w-7xl px-4 pb-6 text-center text-xs text-slate-500">
-        Built with <code>react-simple-maps</code>. Plug in your dataset via <code>EXTRA_DATA</code>.
+        Built with <code>react-simple-maps</code> + <code>Supabase</code>.
       </footer>
 
+      {/* Modal */}
       <Modal open={!!selected} onClose={() => setSelected(null)}>
-        {selected && (
+        {!selected ? null : (
           <div>
             <h3 className="text-lg font-semibold">
               {selected.NAME}{" "}
@@ -446,187 +295,131 @@ export default function InteractiveWorldMapApp() {
               Continent: <span className="font-medium">{selected.CONTINENT}</span>
             </p>
 
-            {/* Country Details */}
             <div className="mt-4 rounded-xl border border-slate-200 p-4">
               <h4 className="mb-2 text-sm font-semibold">Country Details</h4>
-              {(() => {
-                const iso = String(selected.ISO_A3 || "");
-                const name = String(selected.NAME || "");
-                const isoFromName = NAME_TO_ISO3[name];
-                const extra = EXTRA_DATA[iso] ?? (isoFromName ? EXTRA_DATA[isoFromName] : undefined) ?? {};
 
-                if (!(EXTRA_DATA[iso] || (isoFromName && EXTRA_DATA[isoFromName]))) {
-                  return (
-                    <>
-                      <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                        No structured dataset for this country yet (ISO3: <b>{iso || "?"}</b>, name: <b>{name}</b>).
-                        Add it to <code>EXTRA_DATA</code> using the ISO3 code.
-                      </div>
-                      <dl className="grid grid-cols-3 gap-2 text-sm">
-                        <dt className="col-span-1 text-slate-500">Capital</dt>
-                        <dd className="col-span-2 font-medium">—</dd>
-                        <dt className="col-span-1 text-slate-500">Population</dt>
-                        <dd className="col-span-2 font-medium">—</dd>
-                        <dt className="col-span-1 text-slate-500">Notes</dt>
-                        <dd className="col-span-2 font-medium">—</dd>
-                      </dl>
-                    </>
-                  );
-                }
+              {loading && (
+                <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  Loading data…
+                </div>
+              )}
 
-                const items: Array<[string, string]> = [
-                  ["Capital", String((extra as ExtraData).capital ?? "—")],
-                  ["Population", formatNumber((extra as ExtraData).population)],
-                  ["Notes", String((extra as ExtraData).note ?? "—")],
-                ];
-                return (
+              {!loading && !dbData && (
+                <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  No data in DB for <b>{selected.ISO_A3}</b>. Add it via admin panel.
+                </div>
+              )}
+
+              {!loading && dbData && (
+                <>
                   <dl className="grid grid-cols-3 gap-2 text-sm">
-                    {items.map(([k, v]) => (
-                      <React.Fragment key={k}>
-                        <dt className="col-span-1 text-slate-500">{k}</dt>
-                        <dd className="col-span-2 font-medium">{v}</dd>
-                      </React.Fragment>
-                    ))}
+                    <dt className="text-slate-500">Name</dt>
+                    <dd className="col-span-2 font-medium">{dbData.name || "—"}</dd>
+
+                    <dt className="text-slate-500">Capital</dt>
+                    <dd className="col-span-2 font-medium">{dbData.capital || "—"}</dd>
+
+                    <dt className="text-slate-500">Population</dt>
+                    <dd className="col-span-2 font-medium">{formatNumber(dbData.population)}</dd>
+
+                    <dt className="text-slate-500">Notes</dt>
+                    <dd className="col-span-2 font-medium">{dbData.note || "—"}</dd>
                   </dl>
-                );
-              })()}
 
-              {/* Policy (Annex 2) */}
-              {(() => {
-                const iso = String(selected.ISO_A3 || "");
-                const name = String(selected.NAME || "");
-                const isoFromName = NAME_TO_ISO3[name];
-                const pdata =
-                  (EXTRA_DATA[iso] as CountryData | undefined)?.policy ??
-                  (isoFromName ? (EXTRA_DATA[isoFromName] as CountryData | undefined)?.policy : undefined);
-                if (!pdata) return null;
-                return (
-                  <div className="mt-4 rounded-lg border border-slate-200 p-3">
-                    <h5 className="mb-2 text-sm font-semibold">
-                      Long-term Management Policies (Annex 2)
-                    </h5>
-                    <ul className="space-y-1 text-sm">
-                      <li>
-                        <span className="text-slate-500">Non-nuclear cycle waste: </span>
-                        <span className="font-medium">{pdata.nonNuclearWaste ?? "—"}</span>
-                      </li>
-                      <li>
-                        <span className="text-slate-500">Disused sealed sources: </span>
-                        <span className="font-medium">{pdata.disusedSources ?? "—"}</span>
-                      </li>
-                      <li>
-                        <span className="text-slate-500">Nuclear fuel cycle waste: </span>
-                        <span className="font-medium">{pdata.nuclearFuelCycleWaste ?? "—"}</span>
-                      </li>
-                      <li>
-                        <span className="text-slate-500">Spent fuel (SF): </span>
-                        <span className="font-medium">{pdata.spentFuel ?? "—"}</span>
-                      </li>
-                    </ul>
-                  </div>
-                );
-              })()}
+                  {/* Policies */}
+                  {(dbData.non_nuclear_waste ||
+                    dbData.disused_sources ||
+                    dbData.nuclear_fuel_waste ||
+                    dbData.spent_fuel) && (
+                    <div className="mt-4 rounded-lg border border-slate-200 p-3">
+                      <h5 className="mb-2 text-sm font-semibold">Long-term Management Policies (Annex 2)</h5>
+                      <ul className="space-y-1 text-sm">
+                        <li>
+                          <span className="text-slate-500">Non-nuclear cycle waste: </span>
+                          <span className="font-medium">{dbData.non_nuclear_waste || "—"}</span>
+                        </li>
+                        <li>
+                          <span className="text-slate-500">Disused sealed sources: </span>
+                          <span className="font-medium">{dbData.disused_sources || "—"}</span>
+                        </li>
+                        <li>
+                          <span className="text-slate-500">Nuclear fuel cycle waste: </span>
+                          <span className="font-medium">{dbData.nuclear_fuel_waste || "—"}</span>
+                        </li>
+                        <li>
+                          <span className="text-slate-500">Spent fuel (SF): </span>
+                          <span className="font-medium">{dbData.spent_fuel || "—"}</span>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
 
-              {/* WMO (Annex 3) */}
-              {(() => {
-                const iso = String(selected.ISO_A3 || "");
-                const name = String(selected.NAME || "");
-                const isoFromName = NAME_TO_ISO3[name];
-                const w =
-                  (EXTRA_DATA[iso] as CountryData | undefined)?.wmo ??
-                  (isoFromName ? (EXTRA_DATA[isoFromName] as CountryData | undefined)?.wmo : undefined);
-                if (!w) return null;
-                return (
-                  <div className="mt-4 rounded-lg border border-slate-200 p-3">
-                    <h5 className="mb-2 text-sm font-semibold">
-                      Waste Management Organization (Annex 3)
-                    </h5>
-                    <dl className="grid grid-cols-3 gap-2 text-sm">
-                      <dt className="text-slate-500">Organization</dt>
-                      <dd className="col-span-2 font-medium">{w.name ?? "—"}</dd>
+                  {/* WMO */}
+                  {(dbData.wmo_name ||
+                    dbData.wmo_responsibilities ||
+                    dbData.wmo_ownership) && (
+                    <div className="mt-4 rounded-lg border border-slate-200 p-3">
+                      <h5 className="mb-2 text-sm font-semibold">Waste Management Organization (Annex 3)</h5>
+                      <dl className="grid grid-cols-3 gap-2 text-sm">
+                        <dt className="text-slate-500">Organization</dt>
+                        <dd className="col-span-2 font-medium">{dbData.wmo_name || "—"}</dd>
 
-                      <dt className="text-slate-500">Responsibilities</dt>
-                      <dd className="col-span-2 font-medium">
-                        {w.responsibilities ?? "—"}
-                      </dd>
+                        <dt className="text-slate-500">Responsibilities</dt>
+                        <dd className="col-span-2 font-medium">{dbData.wmo_responsibilities || "—"}</dd>
 
-                      <dt className="text-slate-500">Ownership</dt>
-                      <dd className="col-span-2 font-medium">{w.ownership ?? "—"}</dd>
-                    </dl>
-                  </div>
-                );
-              })()}
+                        <dt className="text-slate-500">Ownership</dt>
+                        <dd className="col-span-2 font-medium">{dbData.wmo_ownership || "—"}</dd>
+                      </dl>
+                    </div>
+                  )}
 
-              {/* Funding (Annex 4) */}
-              {(() => {
-                const iso = String(selected.ISO_A3 || "");
-                const name = String(selected.NAME || "");
-                const isoFromName = NAME_TO_ISO3[name];
-                const f =
-                  (EXTRA_DATA[iso] as CountryData | undefined)?.funding ??
-                  (isoFromName ? (EXTRA_DATA[isoFromName] as CountryData | undefined)?.funding : undefined);
-                if (!f) return null;
-                return (
-                  <div className="mt-4 rounded-lg border border-slate-200 p-3">
-                    <h5 className="mb-2 text-sm font-semibold">
-                      Financing & Funding (Annex 4)
-                    </h5>
-                    <ul className="space-y-1 text-sm">
-                      <li>
-                        <span className="text-slate-500">RWM funding: </span>
-                        <span className="font-medium">{f.rwm ?? "—"}</span>
-                      </li>
-                      <li>
-                        <span className="text-slate-500">SF/HLW funding: </span>
-                        <span className="font-medium">{f.sf_hlw ?? "—"}</span>
-                      </li>
-                      <li>
-                        <span className="text-slate-500">Decommissioning funding: </span>
-                        <span className="font-medium">
-                          {f.decommissioning ?? "—"}
-                        </span>
-                      </li>
-                    </ul>
-                  </div>
-                );
-              })()}
+                  {/* Funding */}
+                  {(dbData.rwm || dbData.sf_hlw || dbData.decommissioning) && (
+                    <div className="mt-4 rounded-lg border border-slate-200 p-3">
+                      <h5 className="mb-2 text-sm font-semibold">Financing & Funding (Annex 4)</h5>
+                      <ul className="space-y-1 text-sm">
+                        <li>
+                          <span className="text-slate-500">RWM funding: </span>
+                          <span className="font-medium">{dbData.rwm || "—"}</span>
+                        </li>
+                        <li>
+                          <span className="text-slate-500">SF/HLW funding: </span>
+                          <span className="font-medium">{dbData.sf_hlw || "—"}</span>
+                        </li>
+                        <li>
+                          <span className="text-slate-500">Decommissioning funding: </span>
+                          <span className="font-medium">{dbData.decommissioning || "—"}</span>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
 
-              {/* Reactors (optional) */}
-              {(() => {
-                const iso = String(selected.ISO_A3 || "");
-                const name = String(selected.NAME || "");
-                const isoFromName = NAME_TO_ISO3[name];
-                const r =
-                  (EXTRA_DATA[iso] as CountryData | undefined)?.reactors ??
-                  (isoFromName ? (EXTRA_DATA[isoFromName] as CountryData | undefined)?.reactors : undefined);
-                if (!r) return null;
-                return (
-                  <div className="mt-4 rounded-lg border border-slate-200 p-3">
-                    <h5 className="mb-2 text-sm font-semibold">
-                      Nuclear Power Reactors (Table 1, 2019)
-                    </h5>
-                    <ul className="space-y-1 text-sm">
-                      <li>
-                        <span className="text-slate-500">In operation: </span>
-                        <span className="font-medium">{r.inOperation ?? "—"}</span>
-                      </li>
-                      <li>
-                        <span className="text-slate-500">Under construction: </span>
-                        <span className="font-medium">
-                          {r.underConstruction ?? "—"}
-                        </span>
-                      </li>
-                      <li>
-                        <span className="text-slate-500">Decommissioning: </span>
-                        <span className="font-medium">
-                          {r.decommissioningUnits ?? "—"}
-                        </span>
-                      </li>
-                      {r.note && <li className="text-slate-500">{r.note}</li>}
-                    </ul>
-                  </div>
-                );
-              })()}
+                  {/* Reactors */}
+                  {(typeof dbData.in_operation === "number" ||
+                    typeof dbData.under_construction === "number" ||
+                    typeof dbData.reactor_decom === "number" ||
+                    dbData.reactor_note) && (
+                    <div className="mt-4 rounded-lg border border-slate-200 p-3">
+                      <h5 className="mb-2 text-sm font-semibold">Nuclear Power Reactors</h5>
+                      <ul className="space-y-1 text-sm">
+                        <li>
+                          <span className="text-slate-500">In operation: </span>
+                          <span className="font-medium">{dbData.in_operation ?? "—"}</span>
+                        </li>
+                        <li>
+                          <span className="text-slate-500">Under construction: </span>
+                          <span className="font-medium">{dbData.under_construction ?? "—"}</span>
+                        </li>
+                        <li>
+                          <span className="text-slate-500">Decommissioning: </span>
+                          <span className="font-medium">{dbData.reactor_decom ?? "—"}</span>
+                        </li>
+                        {dbData.reactor_note && <li className="text-slate-500">{dbData.reactor_note}</li>}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="mt-4 flex justify-end gap-2">
