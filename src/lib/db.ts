@@ -102,7 +102,6 @@ export async function persist(): Promise<void> {
 // DB export → Blob (dosya indirmek için)
 export async function exportToFile(): Promise<Blob> {
   const database = await getDB();
-  // Tipi düzleştir
   const data = database.export() as Uint8Array;
   return new Blob([data.buffer as ArrayBuffer], {
     type: "application/octet-stream",
@@ -120,8 +119,7 @@ export async function importFromFile(file: File): Promise<void> {
 // QueryExecResult → satır dizisi
 function rows(res?: QueryExecResult): Record<string, unknown>[] {
   if (!res || !res.columns || !res.values) return [];
-  // NOT: row tipine açık tip vermiyoruz → SqlValue[] olarak infer ediliyor
-  return res.values.map((row, _index) => {
+  return res.values.map((row) => {
     const obj: Record<string, unknown> = {};
     res.columns.forEach((c, i) => {
       obj[c] = row[i];
@@ -191,6 +189,9 @@ export type CountryProfileRow = {
   reactors_note?: string | null;
 };
 
+// Ülke + profil birleşik tip
+export type CountryWithProfile = CountryRow & Partial<CountryProfileRow>;
+
 export async function upsertCountryProfile(
   p: CountryProfileRow
 ): Promise<void> {
@@ -249,11 +250,7 @@ export async function upsertCountryProfile(
   await persist();
 }
 
-
-// CountryRow ve CountryProfileRow zaten dosyada yukarıda tanımlı
-
-export type CountryWithProfile = CountryRow & Partial<CountryProfileRow>;
-
+// Harita için: tek fonksiyonla ülke+profil getir
 export async function getCountryWithProfile(
   iso3: string
 ): Promise<CountryWithProfile | null> {

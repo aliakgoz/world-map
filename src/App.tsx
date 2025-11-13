@@ -6,10 +6,7 @@ import {
   ZoomableGroup,
 } from "react-simple-maps";
 
-import {
-  CountryWithProfile,
-  getCountryWithProfile,
-} from "./lib/db";
+import { CountryWithProfile, getCountryWithProfile } from "./lib/db";
 
 // react-simple-maps feature light type
 type RSMFeature = {
@@ -140,6 +137,8 @@ export default function InteractiveWorldMapApp() {
     setLoading(true);
     setDbData(null);
     const data = await getCountryWithProfile(iso3);
+    // debug:
+    console.log("loadCountry", iso3, data);
     setDbData(data);
     setLoading(false);
   }
