@@ -6,7 +6,12 @@ import {
   ZoomableGroup,
 } from "react-simple-maps";
 
-import { CountryWithProfile, getCountryWithProfile } from "./lib/db";
+import {
+  getCountryWithProfile,
+  listCountries,
+  type CountryWithProfile,
+  type CountryRow,
+} from "./lib/db";
 
 // react-simple-maps feature light type
 type RSMFeature = {
@@ -133,14 +138,53 @@ export default function InteractiveWorldMapApp() {
   const [dbData, setDbData] = useState<CountryWithProfile | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function loadCountry(iso3: string) {
+  // Debug için: DB’de hangi ülkeler var
+  const [dbCountries, setDbCountries] = useState<CountryRow[]>([]);
+
+  // Uygulama açılırken DB’deki ülke listesini al
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await listCountries();
+        setDbCountries(rows);
+        console.log("DB countries:", rows.map((c) => c.iso3));
+      } catch (err) {
+        console.error("listCountries error:", err);
+      }
+    })();
+  }, []);
+
+  async function loadCountry(iso3Raw: string, name: string) {
+    const iso3 = iso3Raw.toUpperCase();
     setLoading(true);
     setDbData(null);
-    const data = await getCountryWithProfile(iso3);
-    // debug:
-    console.log("loadCountry", iso3, data);
-    setDbData(data);
-    setLoading(false);
+
+    try {
+      // 1) ISO3 ile dene
+      let data = await getCountryWithProfile(iso3);
+
+      // 2) Yoksa isimden fallback ISO3 dene
+      if (!data) {
+        const fallbackIso = NAME_TO_ISO3[name] || NAME_TO_ISO3[name as keyof typeof NAME_TO_ISO3];
+        if (fallbackIso) {
+          data = await getCountryWithProfile(fallbackIso);
+        }
+      }
+
+      console.log("loadCountry → click", {
+        clickedIso: iso3Raw,
+        usedIso: iso3,
+        name,
+        result: data,
+      });
+
+      setDbData(data);
+    } catch (e) {
+      console.error("loadCountry error:", e);
+      setDbData(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const legend = useMemo(() => Object.entries(CONTINENT_COLORS), []);
@@ -250,7 +294,7 @@ export default function InteractiveWorldMapApp() {
                         onClick={() => {
                           setSelected({ NAME, ISO_A3, CONTINENT });
                           setFocusedIso(ISO_A3);
-                          loadCountry(ISO_A3);
+                          loadCountry(ISO_A3, NAME);
                         }}
                         style={{
                           default: {
@@ -305,9 +349,23 @@ export default function InteractiveWorldMapApp() {
               </li>
             ))}
           </ul>
-          <div className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
-            Tip: Use the search box to filter countries by name or ISO3 code.
-            Click a country to see details (from local SQLite db).
+          <div className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 space-y-2">
+            <p>
+              Tip: Use the search box to filter countries by name or ISO3 code.
+              Click a country to see details (from local SQLite db).
+            </p>
+            <div>
+              <div className="font-semibold mb-1">
+                Debug: DB’de kayıtlı ISO3 listesi
+              </div>
+              <div className="text-[11px] break-words">
+                {dbCountries.length === 0
+                  ? "Henüz hiçbir ülke kaydı yok."
+                  : dbCountries
+                      .map((c) => `${c.iso3}:${c.name}`)
+                      .join("  |  ")}
+              </div>
+            </div>
           </div>
         </aside>
       </main>
@@ -353,7 +411,7 @@ export default function InteractiveWorldMapApp() {
                   <dl className="grid grid-cols-3 gap-2 text-sm">
                     <dt className="text-slate-500">Name</dt>
                     <dd className="col-span-2 font-medium">
-                      {dbData.name || "—"}
+                      {dbData.name || "—"} ({dbData.iso3})
                     </dd>
 
                     <dt className="text-slate-500">Capital</dt>
@@ -524,6 +582,16 @@ export default function InteractiveWorldMapApp() {
                       </ul>
                     </div>
                   )}
+
+                  {/* Debug JSON */}
+                  <div className="mt-4 border rounded p-2 text-[11px] bg-slate-50">
+                    <div className="font-semibold mb-1">
+                      Debug: CountryWithProfile JSON
+                    </div>
+                    <pre className="max-h-48 overflow-auto">
+{JSON.stringify(dbData, null, 2)}
+                    </pre>
+                  </div>
                 </>
               )}
             </div>
