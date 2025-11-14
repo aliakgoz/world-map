@@ -1,15 +1,18 @@
 // src/lib/db.ts
+
+// ==== Tipler ====
 export type CountryRow = {
   iso3: string;
   name: string;
-  region: string | null;
-  subregion: string | null;
-  capital: string | null;
-  population: number | null;
-  notes: string | null;
+  region?: string | null;
+  subregion?: string | null;
+  capital?: string | null;
+  population?: number | null;
+  notes?: string | null;
 };
 
-export type CountryWithProfile = CountryRow & {
+export type CountryProfileRow = {
+  iso3: string;
   policy_non_nuclear_waste?: string | null;
   policy_disused_sources?: string | null;
   policy_nfc_waste?: string | null;
@@ -26,25 +29,31 @@ export type CountryWithProfile = CountryRow & {
   reactors_note?: string | null;
 };
 
-export async function listCountriesClient(): Promise<CountryRow[]> {
-  const res = await fetch("/api/countries");
+export type CountryWithProfile = CountryRow & Partial<CountryProfileRow>;
+
+// ==== Client helper (browser) ====
+
+async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(path);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`GET /api/countries failed: ${res.status} ${text}`);
+    throw new Error(
+      `GET ${path} failed: ${res.status} ${res.statusText}\n${text}`
+    );
   }
-  return res.json();
+  return (await res.json()) as T;
+}
+
+export async function listCountriesClient(): Promise<CountryRow[]> {
+  return apiGet<CountryRow[]>("/api/countries");
 }
 
 export async function getCountryWithProfileClient(
   iso3: string
 ): Promise<CountryWithProfile | null> {
-  const code = iso3.toUpperCase();
-  const res = await fetch(`/api/country-with-profile?iso3=${code}`);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(
-      `GET /api/country-with-profile?iso3=${code} failed: ${res.status} ${text}`
-    );
-  }
-  return res.json();
+  if (!iso3) return null;
+  const url = `/api/country-with-profile?iso3=${encodeURIComponent(
+    iso3.toUpperCase()
+  )}`;
+  return apiGet<CountryWithProfile | null>(url);
 }

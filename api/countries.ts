@@ -1,21 +1,27 @@
 // api/countries.ts
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { dbListCountries } from "./_db";
+import { neon } from "@neondatabase/serverless";
+import type { CountryRow } from "../src/lib/db";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+const sql = neon(process.env.DATABASE_URL!);
 
+export default async function handler(req: any, res: any) {
   try {
-    const rows = await dbListCountries();
-    return res.status(200).json(rows);
+    if (req.method !== "GET") {
+      res.status(405).json({ error: "Method not allowed" });
+      return;
+    }
+
+    const rows =
+      await sql<CountryRow>`select iso3, name, region, subregion, capital, population, notes
+                            from countries
+                            order by name asc`;
+
+    res.status(200).json(rows);
   } catch (err: any) {
-    console.error("countries API error:", err);
-    return res.status(500).json({
-      error: "countries query failed",
-      detail: err?.message ?? String(err),
+    console.error("api/countries error:", err);
+    res.status(500).json({
+      error: "Server error",
+      message: err.message ?? String(err),
     });
   }
 }
