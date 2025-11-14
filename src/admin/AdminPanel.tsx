@@ -1,151 +1,71 @@
 // src/admin/AdminPanel.tsx
 import React, { useEffect, useState } from "react";
 import {
-  listCountries,
-  upsertCountry,
-  upsertCountryProfile,
-  addPlant,
-  addRWFacility,
+  listCountriesClient,
+  getCountryWithProfileClient,
   CountryRow,
+  CountryWithProfile,
 } from "../lib/db";
 
 export default function AdminPanel() {
   const [countries, setCountries] = useState<CountryRow[]>([]);
   const [selectedIso, setSelectedIso] = useState<string>("");
+  const [selectedDetail, setSelectedDetail] = useState<CountryWithProfile | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Seçili ülkenin temel bilgilerini formda gösterelim
-  const selectedCountry = countries.find((c) => c.iso3 === selectedIso);
-
-  // İlk yüklemede ülkeleri çek
+  // İlk açılışta ülke listesini çek
   useEffect(() => {
-    refreshCountries();
+    (async () => {
+      try {
+        const rows = await listCountriesClient();
+        setCountries(rows);
+      } catch (err: any) {
+        console.error("listCountries error:", err);
+        setErrorMsg(err?.message ?? String(err));
+      }
+    })();
   }, []);
 
-  async function refreshCountries() {
-    try {
-      const rows = await listCountries();
-      setCountries(rows);
-    } catch (err) {
-      console.error("listCountries error", err);
-      alert("Ülkeler alınırken hata oluştu (console'a bak).");
+  // Seçili ülke değişince detayını çek
+  useEffect(() => {
+    if (!selectedIso) {
+      setSelectedDetail(null);
+      return;
     }
-  }
-
-  async function addDummyCountry() {
-    try {
-      await upsertCountry({
-        iso3: "TUR",
-        name: "Türkiye",
-        capital: "Ankara",
-        population: 85000000,
-        notes: "Neon/Postgres demo kaydı",
-      });
-      await refreshCountries();
-    } catch (err) {
-      console.error("upsertCountry error", err);
-      alert("Ülke eklenirken hata oluştu.");
-    }
-  }
-
-  async function saveProfileExample() {
-    if (!selectedIso) return alert("Önce ülke seç.");
-    try {
-      await upsertCountryProfile({
-        iso3: selectedIso,
-        policy_non_nuclear_waste: "Storage / near-surface disposal",
-        policy_disused_sources: "Return to supplier or centralized storage",
-        policy_nfc_waste: "Centralized storage + eventual disposal",
-        policy_spent_fuel: "Long-term storage; possible DGR",
-        wmo_name: "Example WMO",
-        wmo_responsibilities: "National RW & SF management",
-        wmo_ownership: "State",
-        funding_rwm: "Producers pay to RWM fund",
-        funding_sf_hlw: "Levy on nuclear electricity production",
-        funding_decom: "Dedicated decommissioning fund",
-        reactors_in_operation: 0,
-        reactors_under_construction: 0,
-        reactors_decommissioning: 0,
-        reactors_note: "",
-      });
-      alert("Profil kaydedildi (örnek).");
-    } catch (err) {
-      console.error("upsertCountryProfile error", err);
-      alert("Profil kaydedilirken hata oluştu.");
-    }
-  }
-
-  async function addDummyPlant() {
-    if (!selectedIso) return alert("Önce ülke seç.");
-    try {
-      await addPlant({
-        iso3: selectedIso,
-        name: "Sample NPP",
-        reactor_type: "PWR",
-        net_electrical_mw: 1200,
-        status: "planned",
-        commissioning_year: null,
-        shutdown_year: null,
-        latitude: 39.9,
-        longitude: 32.8,
-        source_cite: "IAEA / WNA (demo)",
-      });
-      alert("Santral eklendi (örnek).");
-    } catch (err) {
-      console.error("addPlant error", err);
-      alert("Santral eklenirken hata oluştu.");
-    }
-  }
-
-  async function addDummyFacility() {
-    if (!selectedIso) return alert("Önce ülke seç.");
-    try {
-      await addRWFacility({
-        iso3: selectedIso,
-        name: "Sample Repository",
-        kind: "near_surface_repository",
-        waste_classes: "VLLW, LLW",
-        status: "operational",
-        operator: "National Agency",
-        latitude: 40.0,
-        longitude: 33.0,
-        notes: "Demo kayıt",
-        source_cite: "IAEA SRIS (demo)",
-      });
-      alert("Tesis eklendi (örnek).");
-    } catch (err) {
-      console.error("addRWFacility error", err);
-      alert("Tesis eklenirken hata oluştu.");
-    }
-  }
+    (async () => {
+      setLoading(true);
+      setErrorMsg(null);
+      try {
+        const detail = await getCountryWithProfileClient(selectedIso);
+        setSelectedDetail(detail);
+        console.log("Detail for", selectedIso, detail); // DEBUG
+      } catch (err: any) {
+        console.error("getCountryWithProfile error:", err);
+        setErrorMsg(err?.message ?? String(err));
+        setSelectedDetail(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [selectedIso]);
 
   return (
     <div className="p-4 max-w-5xl mx-auto">
-      <h1 className="text-xl font-semibold mb-3">
-        Admin Panel (Neon Postgres)
-      </h1>
+      <h1 className="text-xl font-semibold mb-3">Admin Panel (Neon/Postgres)</h1>
 
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={refreshCountries}
-          className="px-3 py-2 border rounded"
-        >
-          Ülkeleri Yenile
-        </button>
-        <button
-          onClick={addDummyCountry}
-          className="px-3 py-2 border rounded"
-        >
-          Türkiye (seed)
-        </button>
-      </div>
+      {errorMsg && (
+        <div className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-800">
+          API error: {errorMsg}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-6">
-        {/* Sol: ülke listesi */}
         <div>
           <h2 className="font-semibold mb-2">Ülkeler</h2>
           <select
             className="w-full border rounded p-2"
-            size={12}
+            size={10}
             value={selectedIso}
             onChange={(e) => setSelectedIso(e.target.value)}
           >
@@ -157,65 +77,35 @@ export default function AdminPanel() {
           </select>
         </div>
 
-        {/* Sağ: seçili ülke bilgisi + butonlar */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <h2 className="font-semibold">
             Seçili ülke: {selectedIso || "-"}
           </h2>
 
-          {selectedCountry && (
-            <div className="rounded border p-3 text-sm space-y-1">
-              <div>
-                <span className="text-slate-500">Name: </span>
-                <span className="font-medium">{selectedCountry.name}</span>
-              </div>
-              <div>
-                <span className="text-slate-500">Capital: </span>
-                <span className="font-medium">
-                  {selectedCountry.capital || "—"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Population: </span>
-                <span className="font-medium">
-                  {selectedCountry.population?.toLocaleString() || "—"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Notes: </span>
-                <span className="font-medium">
-                  {selectedCountry.notes || "—"}
-                </span>
-              </div>
+          {loading && (
+            <div className="rounded bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              Detay yükleniyor…
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={saveProfileExample}
-              className="px-3 py-2 border rounded"
-            >
-              Profil Kaydet (örnek)
-            </button>
-            <button
-              onClick={addDummyPlant}
-              className="px-3 py-2 border rounded"
-            >
-              Santral Ekle (örnek)
-            </button>
-            <button
-              onClick={addDummyFacility}
-              className="px-3 py-2 border rounded"
-            >
-              Tesis Ekle (örnek)
-            </button>
-          </div>
+          {!loading && selectedIso && !selectedDetail && (
+            <div className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Bu ülke için detay bulunamadı (countries var ama country_profiles yok olabilir).
+            </div>
+          )}
+
+          {!loading && selectedDetail && (
+            <div className="text-xs">
+              <h3 className="font-semibold mb-1">DEBUG JSON</h3>
+              <pre className="max-h-80 overflow-auto rounded bg-slate-900 text-slate-100 p-2 text-[11px]">
+                {JSON.stringify(selectedDetail, null, 2)}
+              </pre>
+            </div>
+          )}
 
           <p className="text-sm text-slate-600">
-            Not: Gerçek kullanımda bu paneli daha detaylı formlar ile
-            genişletip (policy, WMO, funding, koordinatlar, kaynak atıfları
-            vb.) doldurabilirsin. Şu an amaç, Neon Postgres entegrasyonunu
-            test etmek ve debug için veriyi görmek.
+            Not: Daha sonra buraya form alanları (policy, WMO, funding, reactors vs.)
+            ekleyip kaydetme butonları koyacağız.
           </p>
         </div>
       </div>

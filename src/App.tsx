@@ -7,10 +7,10 @@ import {
 } from "react-simple-maps";
 
 import {
-  getCountryWithProfile,
-  listCountries,
-  type CountryWithProfile,
-  type CountryRow,
+  CountryWithProfile,
+  CountryRow,
+  getCountryWithProfileClient,
+  listCountriesClient,
 } from "./lib/db";
 
 // react-simple-maps feature light type
@@ -137,19 +137,20 @@ export default function InteractiveWorldMapApp() {
   // DB’den gelen detay
   const [dbData, setDbData] = useState<CountryWithProfile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Debug için: DB’de hangi ülkeler var
+  // Debug için: DB’de hangi ülkeler var (Neon/Postgres)
   const [dbCountries, setDbCountries] = useState<CountryRow[]>([]);
 
   // Uygulama açılırken DB’deki ülke listesini al
   useEffect(() => {
     (async () => {
       try {
-        const rows = await listCountries();
+        const rows = await listCountriesClient();
         setDbCountries(rows);
         console.log("DB countries:", rows.map((c) => c.iso3));
       } catch (err) {
-        console.error("listCountries error:", err);
+        console.error("listCountriesClient error:", err);
       }
     })();
   }, []);
@@ -158,16 +159,19 @@ export default function InteractiveWorldMapApp() {
     const iso3 = iso3Raw.toUpperCase();
     setLoading(true);
     setDbData(null);
+    setErrorMsg(null);
 
     try {
       // 1) ISO3 ile dene
-      let data = await getCountryWithProfile(iso3);
+      let data = await getCountryWithProfileClient(iso3);
 
       // 2) Yoksa isimden fallback ISO3 dene
       if (!data) {
-        const fallbackIso = NAME_TO_ISO3[name] || NAME_TO_ISO3[name as keyof typeof NAME_TO_ISO3];
+        const fallbackIso =
+          NAME_TO_ISO3[name] ||
+          NAME_TO_ISO3[name as keyof typeof NAME_TO_ISO3];
         if (fallbackIso) {
-          data = await getCountryWithProfile(fallbackIso);
+          data = await getCountryWithProfileClient(fallbackIso);
         }
       }
 
@@ -179,8 +183,9 @@ export default function InteractiveWorldMapApp() {
       });
 
       setDbData(data);
-    } catch (e) {
+    } catch (e: any) {
       console.error("loadCountry error:", e);
+      setErrorMsg(e?.message ?? String(e));
       setDbData(null);
     } finally {
       setLoading(false);
@@ -352,7 +357,7 @@ export default function InteractiveWorldMapApp() {
           <div className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 space-y-2">
             <p>
               Tip: Use the search box to filter countries by name or ISO3 code.
-              Click a country to see details (from local SQLite db).
+              Click a country to see details (from Neon/Postgres DB).
             </p>
             <div>
               <div className="font-semibold mb-1">
@@ -372,7 +377,7 @@ export default function InteractiveWorldMapApp() {
 
       <footer className="mx-auto max-w-7xl px-4 pb-6 text-center text-xs text-slate-500">
         Built with <code>react-simple-maps</code> +{" "}
-        <code>sql.js (local SQLite)</code>.
+        <code>Neon Postgres</code>.
       </footer>
 
       {/* Modal */}
@@ -393,13 +398,19 @@ export default function InteractiveWorldMapApp() {
             <div className="mt-4 rounded-xl border border-slate-200 p-4">
               <h4 className="mb-2 text-sm font-semibold">Country Details</h4>
 
+              {errorMsg && (
+                <div className="mb-2 rounded bg-red-50 px-3 py-2 text-xs text-red-800">
+                  API error: {errorMsg}
+                </div>
+              )}
+
               {loading && (
                 <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
                   Loading data…
                 </div>
               )}
 
-              {!loading && !dbData && (
+              {!loading && !dbData && !errorMsg && (
                 <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
                   No data in DB for <b>{selected.ISO_A3}</b>. Add it via admin
                   panel.

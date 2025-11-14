@@ -1,56 +1,26 @@
 // api/country-with-profile.ts
-import { dbQuery } from "./_db";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { dbGetCountryWithProfile } from "./_db";
 
-export default async function handler(req: any, res: any) {
-  const method = req.method || "GET";
-  if (method !== "GET") {
-    res.status(405).send("Method not allowed");
-    return;
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET");
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const iso3 = (req.query?.iso3 || req.query?.ISO3) as string | undefined;
+  const iso3 = (req.query.iso3 as string | undefined)?.trim();
   if (!iso3) {
-    res.status(400).json({ error: "iso3 query param is required" });
-    return;
+    return res.status(400).json({ error: "Missing iso3 query parameter" });
   }
 
   try {
-    const { rows } = await dbQuery(
-      `
-      select
-        c.iso3,
-        c.name,
-        c.region,
-        c.subregion,
-        c.capital,
-        c.population,
-        c.notes,
-        p.policy_non_nuclear_waste,
-        p.policy_disused_sources,
-        p.policy_nfc_waste,
-        p.policy_spent_fuel,
-        p.wmo_name,
-        p.wmo_responsibilities,
-        p.wmo_ownership,
-        p.funding_rwm,
-        p.funding_sf_hlw,
-        p.funding_decom,
-        p.reactors_in_operation,
-        p.reactors_under_construction,
-        p.reactors_decommissioning,
-        p.reactors_note
-      from countries c
-      left join country_profiles p on p.iso3 = c.iso3
-      where c.iso3 = $1
-      limit 1;
-    `,
-      [iso3]
-    );
-
-    const row = rows[0] || null;
-    res.status(200).json(row);
+    const row = await dbGetCountryWithProfile(iso3);
+    return res.status(200).json(row); // null ise frontend 'no data' diyecek
   } catch (err: any) {
-    console.error("GET /country-with-profile error", err);
-    res.status(500).send("Error fetching country");
+    console.error("country-with-profile API error:", err);
+    return res.status(500).json({
+      error: "country-with-profile query failed",
+      detail: err?.message ?? String(err),
+    });
   }
 }
