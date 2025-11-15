@@ -194,13 +194,31 @@ export default function InteractiveWorldMapApp() {
 
   return (
     <>
-      {/* Glow yerine fill animasyonu */}
+      {/* Pulse efekti için CSS */}
       <style>
         {`
-          @keyframes pulseBlueFill {
-            0%   { fill: #2563eb; }
-            50%  { fill: #60a5fa; }
-            100% { fill: #2563eb; }
+          @keyframes pulseBlueGlow {
+            0% {
+              fill: #2563eb;
+              stroke: #1d4ed8;
+              stroke-width: 0.8;
+              opacity: 0.9;
+            }
+            50% {
+              fill: #60a5fa;
+              stroke: #bfdbfe;
+              stroke-width: 2.2;
+              opacity: 0.6;
+            }
+            100% {
+              fill: #2563eb;
+              stroke: #1d4ed8;
+              stroke-width: 0.8;
+              opacity: 0.9;
+            }
+          }
+          .has-db {
+            animation: pulseBlueGlow 1.6s ease-in-out infinite;
           }
         `}
       </style>
@@ -257,7 +275,7 @@ export default function InteractiveWorldMapApp() {
                       const NAME = String(
                         props.NAME ?? props.name ?? props.NAME_LONG ?? ""
                       );
-                      const ISO_A3 = String(
+                      const rawISO = String(
                         props.ISO_A3 ??
                           props.iso_a3 ??
                           props.A3 ??
@@ -268,13 +286,21 @@ export default function InteractiveWorldMapApp() {
                         props.CONTINENT ?? props.continent ?? "Unknown"
                       );
 
+                      // Bazı ülkelerde ISO_A3 = -99 olabiliyor → isimden fallback
+                      const isoNormalized =
+                        rawISO && rawISO !== "-99"
+                          ? rawISO
+                          : (NAME_TO_ISO3[NAME] as string | undefined) ||
+                            rawISO;
+
                       const q = (query ?? "").trim().toLowerCase();
                       const matches =
                         !q ||
                         NAME.toLowerCase().includes(q) ||
-                        ISO_A3.toLowerCase().includes(q);
+                        isoNormalized.toLowerCase().includes(q);
 
-                      const baseFill = CONTINENT_COLORS[CONTINENT] || "#e2e8f0";
+                      const baseFill =
+                        CONTINENT_COLORS[CONTINENT] || "#e2e8f0";
 
                       const baseStyle = {
                         default: {
@@ -297,18 +323,16 @@ export default function InteractiveWorldMapApp() {
                       // Bu ülkede DB’de kayıt var mı?
                       const hasData = dbCountries.some(
                         (c) =>
-                          c.iso3.toUpperCase() === ISO_A3.toUpperCase()
+                          c.iso3.toUpperCase() ===
+                          isoNormalized.toUpperCase()
                       );
 
-                      // Verisi olan ülkeleri mavi pulse ile vurgula
-                      if (hasData) {
-                        baseStyle.default = {
-                          ...baseStyle.default,
-                          fill: "#2563eb",
-                          animation:
-                            "pulseBlueFill 1.8s ease-in-out infinite",
-                        };
-                      }
+                      const classNames = [
+                        hasData ? "has-db" : "",
+                        focusedIso === isoNormalized ? "ring-geo" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ");
 
                       return (
                         <Geography
@@ -323,7 +347,7 @@ export default function InteractiveWorldMapApp() {
                             const { clientX, clientY } = event;
                             setHover({
                               name: NAME,
-                              iso: ISO_A3,
+                              iso: isoNormalized,
                               x: clientX,
                               y: clientY,
                             });
@@ -341,19 +365,19 @@ export default function InteractiveWorldMapApp() {
                           }}
                           onMouseLeave={() => setHover(null)}
                           onClick={() => {
-                            setSelected({ NAME, ISO_A3, CONTINENT });
-                            setFocusedIso(ISO_A3);
-                            loadCountry(ISO_A3, NAME);
+                            setSelected({
+                              NAME,
+                              ISO_A3: isoNormalized,
+                              CONTINENT,
+                            });
+                            setFocusedIso(isoNormalized);
+                            loadCountry(isoNormalized, NAME);
                           }}
                           style={baseStyle}
                           tabIndex={0}
-                          onFocus={() => setFocusedIso(ISO_A3)}
-                          aria-label={`${NAME} (${ISO_A3})`}
-                          className={
-                            focusedIso === ISO_A3
-                              ? "ring-2 ring-sky-400"
-                              : ""
-                          }
+                          onFocus={() => setFocusedIso(isoNormalized)}
+                          aria-label={`${NAME} (${isoNormalized})`}
+                          className={classNames}
                         />
                       );
                     })
