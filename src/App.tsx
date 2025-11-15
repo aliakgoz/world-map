@@ -195,34 +195,33 @@ export default function InteractiveWorldMapApp() {
   return (
     <>
       {/* Pulse efekti için CSS */}
-      <style>
-        {`
-          @keyframes pulseBlueGlow {
-            0% {
-              fill: #2563eb;
-              stroke: #1d4ed8;
-              stroke-width: 0.8;
-              opacity: 0.9;
-            }
-            50% {
-              fill: #60a5fa;
-              stroke: #bfdbfe;
-              stroke-width: 2.2;
-              opacity: 0.6;
-            }
-            100% {
-              fill: #2563eb;
-              stroke: #1d4ed8;
-              stroke-width: 0.8;
-              opacity: 0.9;
-            }
-          }
-          .has-db {
-            animation: pulseBlueGlow 1.6s ease-in-out infinite;
-          }
-        `}
-      </style>
-
+     <style>
+  {`
+    @keyframes pulseBlueGlow {
+      0% {
+        fill: #e5e7eb;          /* açık gri (default) */
+        stroke: #e5e7eb;
+        stroke-width: 0.6;
+        opacity: 0.9;
+      }
+      50% {
+        fill: rgba(59, 130, 246, 0.25); /* hafif saydam mavi */
+        stroke: #bfdbfe;                /* çok hafif mavi kontur */
+        stroke-width: 1.2;
+        opacity: 1;
+      }
+      100% {
+        fill: #e5e7eb;          /* tekrar gri */
+        stroke: #e5e7eb;
+        stroke-width: 0.6;
+        opacity: 0.9;
+      }
+    }
+    .has-db {
+      animation: pulseBlueGlow 2s ease-in-out infinite;
+    }
+  `}
+</style>
       <div className="min-h-screen bg-slate-50 text-slate-900">
         <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
