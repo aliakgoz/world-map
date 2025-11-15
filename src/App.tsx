@@ -7,10 +7,10 @@ import {
 } from "react-simple-maps";
 
 import {
-  CountryWithProfile,
   CountryRow,
-  getCountryWithProfileClient,
+  CountryWithProfile,
   listCountriesClient,
+  getCountryWithProfileClient,
 } from "./lib/db";
 
 // react-simple-maps feature light type
@@ -137,9 +137,8 @@ export default function InteractiveWorldMapApp() {
   // DB’den gelen detay
   const [dbData, setDbData] = useState<CountryWithProfile | null>(null);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Debug için: DB’de hangi ülkeler var (Neon/Postgres)
+  // Debug için: DB’de hangi ülkeler var
   const [dbCountries, setDbCountries] = useState<CountryRow[]>([]);
 
   // Uygulama açılırken DB’deki ülke listesini al
@@ -159,7 +158,6 @@ export default function InteractiveWorldMapApp() {
     const iso3 = iso3Raw.toUpperCase();
     setLoading(true);
     setDbData(null);
-    setErrorMsg(null);
 
     try {
       // 1) ISO3 ile dene
@@ -183,9 +181,8 @@ export default function InteractiveWorldMapApp() {
       });
 
       setDbData(data);
-    } catch (e: any) {
+    } catch (e) {
       console.error("loadCountry error:", e);
-      setErrorMsg(e?.message ?? String(e));
       setDbData(null);
     } finally {
       setLoading(false);
@@ -196,6 +193,23 @@ export default function InteractiveWorldMapApp() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      {/* Pulse animasyonu için global style */}
+      <style>
+        {`
+        @keyframes pulseBlue {
+          0% {
+            filter: drop-shadow(0 0 0px rgba(37, 99, 235, 0.0));
+          }
+          50% {
+            filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.9));
+          }
+          100% {
+            filter: drop-shadow(0 0 0px rgba(37, 99, 235, 0.0));
+          }
+        }
+      `}
+      </style>
+
       <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
@@ -214,6 +228,7 @@ export default function InteractiveWorldMapApp() {
               onChange={(e) => setQuery(e.target.value)}
               className="w-72 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             />
+            {/* Admin sayfasını istemiyorsan bu linki silebilirsin */}
             {/* <a
               href="/admin"
               className="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
@@ -264,7 +279,42 @@ export default function InteractiveWorldMapApp() {
                       NAME.toLowerCase().includes(q) ||
                       ISO_A3.toLowerCase().includes(q);
 
-                    const fill = CONTINENT_COLORS[CONTINENT] || "#e2e8f0";
+                    const baseFill =
+                      CONTINENT_COLORS[CONTINENT] || "#e2e8f0";
+                    const fill = matches ? baseFill : "#f1f5f9";
+
+                    // Bu ülkede DB’de kayıt var mı?
+                    const hasData = dbCountries.some(
+                      (c) =>
+                        c.iso3.toUpperCase() === ISO_A3.toUpperCase()
+                    );
+
+                    const baseStyle = {
+                      default: {
+                        fill,
+                        outline: "none",
+                        stroke: "#ffffff",
+                        strokeWidth: 0.6,
+                      } as React.CSSProperties,
+                      hover: {
+                        fill: "#0ea5e9",
+                        outline: "none",
+                        cursor: "pointer",
+                      } as React.CSSProperties,
+                      pressed: {
+                        fill: "#0284c7",
+                        outline: "none",
+                      } as React.CSSProperties,
+                    };
+
+                    // DB’de bilgisi olan ülkelerde yumuşak mavi yanıp sönme efekti
+                    if (hasData) {
+                      baseStyle.default = {
+                        ...baseStyle.default,
+                        animation:
+                          "pulseBlue 2.4s ease-in-out infinite",
+                      };
+                    }
 
                     return (
                       <Geography
@@ -301,23 +351,7 @@ export default function InteractiveWorldMapApp() {
                           setFocusedIso(ISO_A3);
                           loadCountry(ISO_A3, NAME);
                         }}
-                        style={{
-                          default: {
-                            fill: matches ? fill : "#f1f5f9",
-                            outline: "none",
-                            stroke: "#ffffff",
-                            strokeWidth: 0.6,
-                          },
-                          hover: {
-                            fill: "#0ea5e9",
-                            outline: "none",
-                            cursor: "pointer",
-                          },
-                          pressed: {
-                            fill: "#0284c7",
-                            outline: "none",
-                          },
-                        }}
+                        style={baseStyle}
                         tabIndex={0}
                         onFocus={() => setFocusedIso(ISO_A3)}
                         aria-label={`${NAME} (${ISO_A3})`}
@@ -357,15 +391,15 @@ export default function InteractiveWorldMapApp() {
           <div className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 space-y-2">
             <p>
               Tip: Use the search box to filter countries by name or ISO3 code.
-              Click a country to see details (from Neon/Postgres DB).
+              Click a country to see details (Neon Postgres).
             </p>
             <div>
               <div className="font-semibold mb-1">
-                Debug: DB’de kayıtlı ISO3 listesi
+                Debug: Countries with DB data (ISO3:name)
               </div>
               <div className="text-[11px] break-words">
                 {dbCountries.length === 0
-                  ? "Henüz hiçbir ülke kaydı yok."
+                  ? "No records yet."
                   : dbCountries
                       .map((c) => `${c.iso3}:${c.name}`)
                       .join("  |  ")}
@@ -398,22 +432,15 @@ export default function InteractiveWorldMapApp() {
             <div className="mt-4 rounded-xl border border-slate-200 p-4">
               <h4 className="mb-2 text-sm font-semibold">Country Details</h4>
 
-              {errorMsg && (
-                <div className="mb-2 rounded bg-red-50 px-3 py-2 text-xs text-red-800">
-                  API error: {errorMsg}
-                </div>
-              )}
-
               {loading && (
                 <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
                   Loading data…
                 </div>
               )}
 
-              {!loading && !dbData && !errorMsg && (
+              {!loading && !dbData && (
                 <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  No data in DB for <b>{selected.ISO_A3}</b>. Add it via admin
-                  panel.
+                  No data in DB for <b>{selected.ISO_A3}</b>. Add it in Neon.
                 </div>
               )}
 
@@ -441,7 +468,6 @@ export default function InteractiveWorldMapApp() {
                     </dd>
                   </dl>
 
-                  {/* Policies */}
                   {(dbData.policy_non_nuclear_waste ||
                     dbData.policy_disused_sources ||
                     dbData.policy_nfc_waste ||
@@ -487,7 +513,6 @@ export default function InteractiveWorldMapApp() {
                     </div>
                   )}
 
-                  {/* WMO */}
                   {(dbData.wmo_name ||
                     dbData.wmo_responsibilities ||
                     dbData.wmo_ownership) && (
@@ -514,7 +539,6 @@ export default function InteractiveWorldMapApp() {
                     </div>
                   )}
 
-                  {/* Funding */}
                   {(dbData.funding_rwm ||
                     dbData.funding_sf_hlw ||
                     dbData.funding_decom) && (
@@ -551,7 +575,6 @@ export default function InteractiveWorldMapApp() {
                     </div>
                   )}
 
-                  {/* Reactors */}
                   {(typeof dbData.reactors_in_operation === "number" ||
                     typeof dbData.reactors_under_construction === "number" ||
                     typeof dbData.reactors_decommissioning === "number" ||
@@ -594,13 +617,12 @@ export default function InteractiveWorldMapApp() {
                     </div>
                   )}
 
-                  {/* Debug JSON */}
                   <div className="mt-4 border rounded p-2 text-[11px] bg-slate-50">
                     <div className="font-semibold mb-1">
                       Debug: CountryWithProfile JSON
                     </div>
                     <pre className="max-h-48 overflow-auto">
-{JSON.stringify(dbData, null, 2)}
+                      {JSON.stringify(dbData, null, 2)}
                     </pre>
                   </div>
                 </>
