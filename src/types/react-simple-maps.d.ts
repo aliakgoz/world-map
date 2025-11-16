@@ -4,4 +4,5 @@ declare module "react-simple-maps" {
   export const Geographies: React.FC<any>;
   export const Geography: React.FC<any>;
   export const ZoomableGroup: React.FC<any>;
+  export const Marker: React.FC<MarkerProps>;
 }
