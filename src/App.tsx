@@ -26,6 +26,33 @@ type RSMFeature = {
 /** ------------------------------------------------
  *  Constants
  *  ------------------------------------------------ */
+
+// Test için birkaç nükleer santral (lon, lat)
+// Dikkat: [longitude, latitude] (x, y) sırası önemli!
+const TEST_NUCLEAR_PLANTS = [
+  {
+    id: 1,
+    name: "Akkuyu 1",
+    iso3: "TUR",
+    status: "construction",
+    coordinates: [34.1503, 36.144], // Mersin civarı (yaklaşık)
+  },
+  {
+    id: 2,
+    name: "Ringhals",
+    iso3: "SWE",
+    status: "operation",
+    coordinates: [12.112, 57.258], // İsveç
+  },
+  {
+    id: 3,
+    name: "Kori",
+    iso3: "KOR",
+    status: "decommissioning",
+    coordinates: [129.212, 35.318], // Kore civarı (yaklaşık)
+  },
+];
+
 const WORLD_TOPO_JSON =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -117,6 +144,8 @@ function formatNumber(n?: number | null) {
   if (typeof n !== "number") return "—";
   return n.toLocaleString();
 }
+
+
 
 /** ------------------------------------------------
  *  Component
@@ -424,48 +453,28 @@ export default function InteractiveWorldMapApp() {
                     })
                   }
                 </Geographies>
-                {/* Nükleer santral marker’ları */}
-{plants.map((p) => {
-  if (
-    typeof p.longitude !== "number" ||
-    typeof p.latitude !== "number"
-  ) {
-    return null;
-  }
-
-  const color = plantColor(p.status);
-  const r = plantRadius(p.status);
-
-  return (
-    <Marker
-      key={p.id}
-      coordinates={[p.longitude, p.latitude]}
-    >
-      {/* dış halka (border) */}
-      <circle
-        r={r + 1.2}
-        fill="white"
-        stroke={color}
-        strokeWidth={0.8}
-        opacity={0.9}
-      />
-      {/* iç dolu daire */}
-      <circle
-        r={r}
-        fill={color}
-        opacity={0.9}
-      />
-      {/* <text
-  textAnchor="middle"
-  y={-r - 1}
-  fontSize={6}
->
-  ⚛︎
-</text> */}
-    </Marker>
-    
-  );
-})}
+                {/* ---- Nükleer santral Marker'ları ---- */}
+                {TEST_NUCLEAR_PLANTS.map((plant) => (
+                  <Marker key={plant.id} coordinates={plant.coordinates as [number, number]}>
+                    <circle
+                      r={5}                          // boyut
+                      fill={plantColor(plant.status)}
+                      stroke="#ffffff"
+                      strokeWidth={1}
+                      opacity={0.9}
+                    />
+                    {/* İstersen text de ekleyebilirsin, ama kalabalık olmasın diye yorumda bırakıyorum */}
+                    {/* 
+                    <text
+                      textAnchor="middle"
+                      y={-10}
+                      style={{ fontSize: 8, fill: "#0f172a" }}
+                    >
+                      {plant.name}
+                    </text>
+                    */}
+                  </Marker>
+                ))}
               </ZoomableGroup>
             </ComposableMap>
 
