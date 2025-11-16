@@ -460,7 +460,7 @@ export default function InteractiveWorldMapApp() {
   y={-r - 1}
   fontSize={6}
 >
-  ⚛︎
+  ⚛︎l
 </text>
     </Marker>
     
