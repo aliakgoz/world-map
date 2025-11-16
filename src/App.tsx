@@ -5,6 +5,7 @@ import {
   Geographies,
   Geography,
   ZoomableGroup,
+  Marker,      // <-- ekle
 } from "react-simple-maps";
 
 import {
@@ -12,6 +13,8 @@ import {
   CountryRow,
   listCountriesClient,
   getCountryWithProfileClient,
+  NuclearPlantClientRow,
+  listNuclearPlantsClient,
 } from "./lib/db";
 
 // react-simple-maps feature light type
@@ -118,6 +121,43 @@ function formatNumber(n?: number | null) {
 /** ------------------------------------------------
  *  Component
  *  ------------------------------------------------ */
+function plantColor(status: string): string {
+  switch (status) {
+    case "operational":
+      return "#16a34a"; // yeşil
+    case "construction":
+      return "#eab308"; // sarı
+    case "planning":
+      return "#3b82f6"; // mavi
+    case "site_characterization":
+      return "#8b5cf6"; // mor
+    case "decommissioning":
+      return "#f97316"; // turuncu
+    case "shutdown":
+      return "#dc2626"; // kırmızı
+    default:
+      return "#6b7280"; // gri
+  }
+}
+
+function plantRadius(status: string): number {
+  switch (status) {
+    case "operational":
+      return 4;
+    case "construction":
+      return 4;
+    case "planning":
+      return 3;
+    case "site_characterization":
+      return 3;
+    case "decommissioning":
+    case "shutdown":
+      return 4;
+    default:
+      return 3;
+  }
+}
+
 export default function InteractiveWorldMapApp() {
   const [selected, setSelected] = useState<{
     NAME: string;
@@ -142,18 +182,24 @@ export default function InteractiveWorldMapApp() {
   // Debug için: DB’de hangi ülkeler var
   const [dbCountries, setDbCountries] = useState<CountryRow[]>([]);
 
+  const [plants, setPlants] = useState<NuclearPlantClientRow[]>([]);
+
   // Uygulama açılırken DB’deki ülke listesini al (API üzerinden Neon)
-  useEffect(() => {
-    (async () => {
-      try {
-        const rows = await listCountriesClient();
-        setDbCountries(rows);
-        console.log("DB countries:", rows.map((c) => c.iso3));
-      } catch (err) {
-        console.error("listCountriesClient error:", err);
-      }
-    })();
-  }, []);
+ useEffect(() => {
+  (async () => {
+    try {
+      const rows = await listCountriesClient();
+      setDbCountries(rows);
+      console.log("DB countries:", rows.map((c) => c.iso3));
+
+      const p = await listNuclearPlantsClient();
+      setPlants(p);
+      console.log("Nuclear plants:", p.length);
+    } catch (err) {
+      console.error("initial load error:", err);
+    }
+  })();
+}, []);
 
   async function loadCountry(iso3Raw: string, name: string) {
     const iso3 = iso3Raw.toUpperCase();
@@ -378,6 +424,48 @@ export default function InteractiveWorldMapApp() {
                     })
                   }
                 </Geographies>
+                {/* Nükleer santral marker’ları */}
+{plants.map((p) => {
+  if (
+    typeof p.longitude !== "number" ||
+    typeof p.latitude !== "number"
+  ) {
+    return null;
+  }
+
+  const color = plantColor(p.status);
+  const r = plantRadius(p.status);
+
+  return (
+    <Marker
+      key={p.id}
+      coordinates={[p.longitude, p.latitude]}
+    >
+      {/* dış halka (border) */}
+      <circle
+        r={r + 1.2}
+        fill="white"
+        stroke={color}
+        strokeWidth={0.8}
+        opacity={0.9}
+      />
+      {/* iç dolu daire */}
+      <circle
+        r={r}
+        fill={color}
+        opacity={0.9}
+      />
+      <text
+  textAnchor="middle"
+  y={-r - 1}
+  fontSize={6}
+>
+  ⚛︎
+</text>
+    </Marker>
+    
+  );
+})}
               </ZoomableGroup>
             </ComposableMap>
 

@@ -57,3 +57,37 @@ export async function getCountryWithProfileClient(
   )}`;
   return apiGet<CountryWithProfile | null>(url);
 }
+
+
+// lib/db.ts içine (client-side fetch helper)
+export type NuclearPlantClientRow = {
+  id: number;
+  iso3: string;
+  name: string;
+  site_name?: string | null;
+  reactor_type?: string | null;
+  net_electrical_mw?: number | null;
+  status: string;
+  commissioning_year?: number | null;
+  shutdown_year?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  source_cite?: string | null;
+};
+
+export async function listNuclearPlantsClient(
+  iso3?: string
+): Promise<NuclearPlantClientRow[]> {
+  let url = "/api/nuclear-plants";
+  if (iso3) {
+    url += `?iso3=${encodeURIComponent(iso3)}`;
+  }
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("listNuclearPlantsClient error:", res.status, text);
+    throw new Error(`GET /api/nuclear-plants failed: ${res.status}`);
+  }
+  return (await res.json()) as NuclearPlantClientRow[];
+}
