@@ -455,13 +455,13 @@ export default function InteractiveWorldMapApp() {
         fill={color}
         opacity={0.9}
       />
-      <text
+      {/* <text
   textAnchor="middle"
   y={-r - 1}
   fontSize={6}
 >
-  ⚛︎l
-</text>
+  ⚛︎
+</text> */}
     </Marker>
     
   );
