@@ -1,75 +1,36 @@
 import { ReportTable } from "../types/report";
 
-export const REPORT_TABLES: ReportTable[] = [
-    {
-        id: "table_1_inventory",
-        title: "Table 1: Spent Fuel Inventory (tHM)",
-        type: "mixed",
-        columns: [
-            { key: "country", label: "Country", type: "string" },
-            { key: "iso3", label: "ISO3", type: "string" },
-            { key: "inventory", label: "Inventory (tHM)", type: "number" },
-            { key: "policy", label: "Policy", type: "string" },
-        ],
-        mapKey: "iso3",
-        valueKey: "inventory",
-        data: [
-            { country: "United States", iso3: "USA", inventory: 80000, policy: "Direct Disposal" },
-            { country: "Canada", iso3: "CAN", inventory: 56000, policy: "Direct Disposal" },
-            { country: "France", iso3: "FRA", inventory: 15000, policy: "Reprocessing" },
-            { country: "Japan", iso3: "JPN", inventory: 19000, policy: "Reprocessing" },
-            { country: "Germany", iso3: "DEU", inventory: 8500, policy: "Direct Disposal" },
-            { country: "South Korea", iso3: "KOR", inventory: 14000, policy: "Wait and See" },
-            { country: "Russia", iso3: "RUS", inventory: 23000, policy: "Reprocessing" },
-            { country: "China", iso3: "CHN", inventory: 4000, policy: "Reprocessing" },
-            { country: "United Kingdom", iso3: "GBR", inventory: 6000, policy: "Reprocessing" },
-            { country: "Sweden", iso3: "SWE", inventory: 7000, policy: "Direct Disposal" },
-            { country: "Finland", iso3: "FIN", inventory: 2500, policy: "Direct Disposal" },
-        ],
-    },
-    {
-        id: "table_2_reactors",
-        title: "Table 2: Nuclear Power Reactors in Operation",
-        type: "bar",
-        columns: [
-            { key: "country", label: "Country", type: "string" },
-            { key: "iso3", label: "ISO3", type: "string" },
-            { key: "reactors", label: "Reactors", type: "number" },
-            { key: "capacity", label: "Capacity (MWe)", type: "number" },
-        ],
-        mapKey: "iso3",
-        valueKey: "reactors",
-        data: [
-            { country: "United States", iso3: "USA", reactors: 93, capacity: 95000 },
-            { country: "France", iso3: "FRA", reactors: 56, capacity: 61000 },
-            { country: "China", iso3: "CHN", reactors: 55, capacity: 53000 },
-            { country: "Russia", iso3: "RUS", reactors: 37, capacity: 28000 },
-            { country: "Japan", iso3: "JPN", reactors: 33, capacity: 31000 },
-            { country: "South Korea", iso3: "KOR", reactors: 25, capacity: 24000 },
-            { country: "India", iso3: "IND", reactors: 22, capacity: 6700 },
-            { country: "Canada", iso3: "CAN", reactors: 19, capacity: 13500 },
-            { country: "United Kingdom", iso3: "GBR", reactors: 9, capacity: 5800 },
-            { country: "Ukraine", iso3: "UKR", reactors: 15, capacity: 13000 },
-        ],
-    },
-    {
-        id: "table_3_waste_volume",
-        title: "Table 3: Radioactive Waste Volume (m3)",
-        type: "map",
-        columns: [
-            { key: "country", label: "Country", type: "string" },
-            { key: "iso3", label: "ISO3", type: "string" },
-            { key: "llw", label: "LLW", type: "number" },
-            { key: "ilw", label: "ILW", type: "number" },
-            { key: "hlw", label: "HLW", type: "number" },
-        ],
-        mapKey: "iso3",
-        valueKey: "hlw",
-        data: [
-            { country: "United States", iso3: "USA", llw: 1000000, ilw: 50000, hlw: 20000 },
-            { country: "France", iso3: "FRA", llw: 800000, ilw: 40000, hlw: 5000 },
-            { country: "United Kingdom", iso3: "GBR", llw: 400000, ilw: 30000, hlw: 1500 },
-            { country: "Germany", iso3: "DEU", llw: 300000, ilw: 10000, hlw: 1000 },
-        ],
-    },
-];
+// Import JSON data directly
+import reportTablesJson from "./source/report_tables.json";
+import reportDataJson from "./source/report_data.json";
+
+// Helper to transform the flat JSON data into the nested structure required by the app
+const transformData = (): ReportTable[] => {
+    const tables: ReportTable[] = reportTablesJson.map((tableMeta: any) => {
+        // Filter data for this table
+        const tableRows = reportDataJson.filter((row: any) => row.table_id === tableMeta.id);
+
+        // Map rows to the expected format (just the data object with iso3 injected if needed)
+        const data = tableRows.map((row: any) => ({
+            iso3: row.iso3,
+            ...row.data
+        }));
+
+        return {
+            id: tableMeta.slug, // Use slug as ID for the app
+            title: tableMeta.title,
+            type: tableMeta.type as any,
+            mapKey: tableMeta.map_key,
+            valueKey: tableMeta.value_key,
+            data: data,
+            columns: [
+                { key: "iso3", label: "Country", type: "string" },
+                { key: tableMeta.value_key, label: "Value", type: "number" }
+            ]
+        };
+    });
+
+    return tables;
+};
+
+export const REPORT_TABLES: ReportTable[] = transformData();

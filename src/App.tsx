@@ -1,19 +1,19 @@
 // src/App.tsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Map } from "./components/Map";
+import { Sidebar } from "./components/Sidebar";
+import { Modal } from "./components/Modal";
+import { Tooltip } from "./components/Tooltip";
 import {
   CountryWithProfile,
   CountryRow,
   listCountriesClient,
   getCountryWithProfileClient,
-  NuclearPlantClientRow,
-  listNuclearPlantsClient,
 } from "./lib/db";
 import { NAME_TO_ISO3 } from "./constants";
-import { Modal } from "./components/Modal";
-import { Tooltip } from "./components/Tooltip";
-import { Map } from "./components/Map";
-import { Sidebar } from "./components/Sidebar";
 import { ReportTable } from "./types/report";
+import countriesJson from "./data/source/countries.json"; // Import directly
+import countryProfiles from "./data/source/country_profiles.json";
 
 /** ------------------------------------------------
  *  Utils
@@ -47,10 +47,37 @@ export default function InteractiveWorldMapApp() {
   // Debug için: DB’de hangi ülkeler var
   const [dbCountries, setDbCountries] = useState<CountryRow[]>([]);
 
-  const [plants, setPlants] = useState<NuclearPlantClientRow[]>([]);
-
   // Report Visualization State
   const [selectedTable, setSelectedTable] = useState<ReportTable | null>(null);
+
+  // New state for modal
+  const [selectedCountryIso, setSelectedCountryIso] = useState<string | null>(null);
+  const [selectedCountryProfile, setSelectedCountryProfile] = useState<CountryWithProfile | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Handle country click
+  const handleCountryClick = async (geo: any) => {
+    const iso3 = geo.properties.ISO_A3;
+    const countryName = geo.properties.NAME;
+
+    // Find basic info
+    const basicInfo = dbCountries.find((c) => c.iso3 === iso3);
+
+    // Find profile from JSON (Mocking API)
+    const profiles = countryProfiles; // Already imported
+    const profile = profiles.find((p: any) => p.iso3 === iso3);
+
+    const fullProfile: CountryWithProfile = {
+      iso3,
+      name: countryName,
+      ...basicInfo,
+      ...profile,
+    };
+
+    setSelectedCountryIso(iso3);
+    setSelectedCountryProfile(fullProfile);
+    setIsModalOpen(true);
+  };
 
   // Uygulama açılırken DB’deki ülke listesini al (API üzerinden Neon)
   useEffect(() => {
@@ -59,10 +86,6 @@ export default function InteractiveWorldMapApp() {
         const rows = await listCountriesClient();
         setDbCountries(rows);
         console.log("DB countries:", rows.map((c) => c.iso3));
-
-        const p = await listNuclearPlantsClient();
-        setPlants(p);
-        console.log("Nuclear plants:", p.length);
       } catch (err) {
         console.error("initial load error:", err);
       }
@@ -136,7 +159,6 @@ export default function InteractiveWorldMapApp() {
 
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 p-4 lg:grid-cols-[1fr_320px]">
         <Map
-          plants={plants}
           dbCountries={dbCountries}
           query={query}
           focusedIso={focusedIso}
@@ -158,7 +180,7 @@ export default function InteractiveWorldMapApp() {
                     (r) => r[selectedTable.mapKey || "iso3"] === hover.iso
                   );
                   if (row && selectedTable.valueKey) {
-                    return `${selectedTable.valueKey}: ${row[selectedTable.valueKey]}`;
+                    return `${selectedTable.valueKey}: ${row[selectedTable.valueKey]} `;
                   }
                   return null;
                 })()}

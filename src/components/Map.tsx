@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
     ComposableMap,
     Geographies,
@@ -8,15 +8,16 @@ import {
 } from "react-simple-maps";
 import { RSMFeature } from "../types";
 import { WORLD_TOPO_JSON, CONTINENT_COLORS, NAME_TO_ISO3 } from "../constants";
-import { CountryRow, NuclearPlantClientRow } from "../lib/db";
+import { CountryRow } from "../lib/db";
 import { ReportTable } from "../types/report";
 
 type MapProps = {
-    plants: NuclearPlantClientRow[];
     dbCountries: CountryRow[];
     query: string;
     focusedIso: string | null;
-    setHover: (hover: { name: string; iso: string; x: number; y: number } | null) => void;
+    setHover: (
+        hover: { name: string; iso: string; x: number; y: number } | null
+    ) => void;
     setSelected: (selected: {
         NAME: string;
         ISO_A3: string;
@@ -26,25 +27,6 @@ type MapProps = {
     loadCountry: (iso: string, name: string) => void;
     selectedTable: ReportTable | null;
 };
-
-function plantColor(status: string): string {
-    switch (status) {
-        case "operational":
-            return "#16a34a"; // yeşil
-        case "construction":
-            return "#eab308"; // sarı
-        case "planning":
-            return "#3b82f6"; // mavi
-        case "site_characterization":
-            return "#8b5cf6"; // mor
-        case "decommissioning":
-            return "#f97316"; // turuncu
-        case "shutdown":
-            return "#dc2626"; // kırmızı
-        default:
-            return "#6b7280"; // gri
-    }
-}
 
 // Simple color scale for data visualization
 function getDataColor(value: number, max: number): string {
@@ -63,8 +45,7 @@ function getDataColor(value: number, max: number): string {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-export function Map({
-    plants,
+export const Map = memo(function Map({
     dbCountries,
     query,
     focusedIso,
@@ -74,20 +55,21 @@ export function Map({
     loadCountry,
     selectedTable,
 }: MapProps) {
-
     // Calculate max value for the current table to scale colors
     const maxValue = useMemo(() => {
         if (!selectedTable || !selectedTable.valueKey) return 0;
         return Math.max(
-            ...selectedTable.data.map((row) => Number(row[selectedTable.valueKey!] || 0))
+            ...selectedTable.data.map((row) =>
+                Number(row[selectedTable.valueKey!] || 0)
+            )
         );
     }, [selectedTable]);
 
     return (
-        <div className="relative rounded-2xl bg-white p-2 shadow-sm ring-1 ring-black/5 h-[600px]">
+        <div className="relative h-[600px] rounded-2xl bg-white p-2 shadow-sm ring-1 ring-black/5">
             <ComposableMap
                 projectionConfig={{ scale: 160 }}
-                className="w-full h-full"
+                className="h-full w-full"
             >
                 <ZoomableGroup
                     center={[0, 20]}
@@ -146,39 +128,6 @@ export function Map({
                                     fill = CONTINENT_COLORS[CONTINENT] || "#e2e8f0";
                                 }
 
-                                const baseStyle = {
-                                    default: {
-                                        fill: matches ? fill : "#f1f5f9", // fade out if search doesn't match
-                                        outline: "none",
-                                        stroke: "#ffffff",
-                                        strokeWidth: 0.6,
-                                        transition: "all 250ms",
-                                    } as React.CSSProperties,
-                                    hover: {
-                                        fill: "#fbbf24", // amber-400 for hover
-                                        outline: "none",
-                                        cursor: "pointer",
-                                        stroke: "#fff",
-                                        strokeWidth: 1.2,
-                                    } as React.CSSProperties,
-                                    pressed: {
-                                        fill: "#f59e0b",
-                                        outline: "none",
-                                    } as React.CSSProperties,
-                                };
-
-                                // Bu ülkede DB’de kayıt var mı?
-                                const hasData = dbCountries.some(
-                                    (c) => c.iso3.toUpperCase() === isoNormalized.toUpperCase()
-                                );
-
-                                const classNames = [
-                                    hasData ? "has-db" : "",
-                                    focusedIso === isoNormalized ? "ring-geo" : "",
-                                ]
-                                    .filter(Boolean)
-                                    .join(" ");
-
                                 return (
                                     <Geography
                                         key={geo.rsmKey}
@@ -215,33 +164,36 @@ export function Map({
                                             setFocusedIso(isoNormalized);
                                             loadCountry(isoNormalized, NAME);
                                         }}
-                                        style={baseStyle}
-                                        tabIndex={0}
-                                        onFocus={() => setFocusedIso(isoNormalized)}
-                                        aria-label={`${NAME} (${isoNormalized})`}
-                                        className={classNames}
+                                        style={{
+                                            default: {
+                                                fill: matches ? fill : "#f1f5f9", // fade out if search doesn't match
+                                                outline: "none",
+                                                stroke: "#ffffff",
+                                                strokeWidth: 0.6,
+                                                transition: "all 250ms",
+                                            },
+                                            hover: {
+                                                fill: "#fbbf24", // amber-400 for hover
+                                                outline: "none",
+                                                cursor: "pointer",
+                                                stroke: "#fff",
+                                                strokeWidth: 1.2,
+                                            },
+                                            pressed: {
+                                                fill: "#f59e0b",
+                                                outline: "none",
+                                            },
+                                        }}
+                                        className={
+                                            focusedIso === isoNormalized ? "ring-geo" : ""
+                                        }
                                     />
                                 );
                             })
                         }
                     </Geographies>
-                    {/* ---- Nükleer santral Marker'ları ---- */}
-                    {plants.map((plant) => (
-                        <Marker
-                            key={plant.id}
-                            coordinates={[plant.longitude || 0, plant.latitude || 0]}
-                        >
-                            <circle
-                                r={4}
-                                fill={plantColor(plant.status)}
-                                stroke="#ffffff"
-                                strokeWidth={1}
-                                opacity={0.9}
-                            />
-                        </Marker>
-                    ))}
                 </ZoomableGroup>
             </ComposableMap>
         </div>
     );
-}
+});

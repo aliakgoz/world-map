@@ -1,6 +1,7 @@
 // src/lib/db.ts
 
-// ==== Tipler ====
+// ==== Tipler (JSON Şeması ile Uyumlu) ====
+
 export type CountryRow = {
   iso3: string;
   name: string;
@@ -32,6 +33,9 @@ export type CountryProfileRow = {
 export type CountryWithProfile = CountryRow & Partial<CountryProfileRow>;
 
 // ==== Client helper (browser) ====
+// Bu fonksiyonlar artık JSON dosyalarından veri okuyacak şekilde güncellenebilir 
+// veya API çağrıları yapmaya devam edebilir. 
+// Şimdilik API yapısını koruyoruz, backend JSON'dan sunabilir.
 
 async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(path);
@@ -45,6 +49,8 @@ async function apiGet<T>(path: string): Promise<T> {
 }
 
 export async function listCountriesClient(): Promise<CountryRow[]> {
+  // Mocking API call by importing JSON directly if needed, but keeping API signature
+  // In a real app, this would hit /api/countries
   return apiGet<CountryRow[]>("/api/countries");
 }
 
@@ -56,38 +62,4 @@ export async function getCountryWithProfileClient(
     iso3.toUpperCase()
   )}`;
   return apiGet<CountryWithProfile | null>(url);
-}
-
-
-// lib/db.ts içine (client-side fetch helper)
-export type NuclearPlantClientRow = {
-  id: number;
-  iso3: string;
-  name: string;
-  site_name?: string | null;
-  reactor_type?: string | null;
-  net_electrical_mw?: number | null;
-  status: string;
-  commissioning_year?: number | null;
-  shutdown_year?: number | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  source_cite?: string | null;
-};
-
-export async function listNuclearPlantsClient(
-  iso3?: string
-): Promise<NuclearPlantClientRow[]> {
-  let url = "/api/nuclear-plants";
-  if (iso3) {
-    url += `?iso3=${encodeURIComponent(iso3)}`;
-  }
-
-  const res = await fetch(url);
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("listNuclearPlantsClient error:", res.status, text);
-    throw new Error(`GET /api/nuclear-plants failed: ${res.status}`);
-  }
-  return (await res.json()) as NuclearPlantClientRow[];
 }
