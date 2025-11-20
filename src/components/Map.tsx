@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
     ComposableMap,
     Geographies,
@@ -9,6 +9,7 @@ import {
 import { RSMFeature } from "../types";
 import { WORLD_TOPO_JSON, CONTINENT_COLORS, NAME_TO_ISO3 } from "../constants";
 import { CountryRow, NuclearPlantClientRow } from "../lib/db";
+import { ReportTable } from "../types/report";
 
 type MapProps = {
     plants: NuclearPlantClientRow[];
@@ -23,6 +24,7 @@ type MapProps = {
     }) => void;
     setFocusedIso: (iso: string | null) => void;
     loadCountry: (iso: string, name: string) => void;
+    selectedTable: ReportTable | null;
 };
 
 function plantColor(status: string): string {
@@ -44,6 +46,23 @@ function plantColor(status: string): string {
     }
 }
 
+// Simple color scale for data visualization
+function getDataColor(value: number, max: number): string {
+    // Blue scale: #eff6ff (50) to #1e3a8a (900)
+    if (value === 0) return "#eff6ff";
+    const ratio = Math.min(value / max, 1);
+
+    // Interpolate between light blue and dark blue
+    // Light: 219, 234, 254 (blue-100)
+    // Dark: 30, 58, 138 (blue-900)
+
+    const r = Math.round(219 - (219 - 30) * ratio);
+    const g = Math.round(234 - (234 - 58) * ratio);
+    const b = Math.round(254 - (254 - 138) * ratio);
+
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
 export function Map({
     plants,
     dbCountries,
@@ -53,7 +72,17 @@ export function Map({
     setSelected,
     setFocusedIso,
     loadCountry,
+    selectedTable,
 }: MapProps) {
+
+    // Calculate max value for the current table to scale colors
+    const maxValue = useMemo(() => {
+        if (!selectedTable || !selectedTable.valueKey) return 0;
+        return Math.max(
+            ...selectedTable.data.map((row) => Number(row[selectedTable.valueKey!] || 0))
+        );
+    }, [selectedTable]);
+
     return (
         <div className="relative rounded-2xl bg-white p-2 shadow-sm ring-1 ring-black/5 h-[600px]">
             <ComposableMap
@@ -100,22 +129,40 @@ export function Map({
                                     NAME.toLowerCase().includes(q) ||
                                     isoNormalized.toLowerCase().includes(q);
 
-                                const baseFill = CONTINENT_COLORS[CONTINENT] || "#e2e8f0";
+                                // Determine fill color
+                                let fill = "#e2e8f0"; // default gray
+
+                                if (selectedTable && selectedTable.valueKey) {
+                                    // Visualization Mode
+                                    const row = selectedTable.data.find(
+                                        (r) => r[selectedTable.mapKey || "iso3"] === isoNormalized
+                                    );
+                                    if (row) {
+                                        const val = Number(row[selectedTable.valueKey]);
+                                        fill = getDataColor(val, maxValue);
+                                    }
+                                } else {
+                                    // Default Mode (Continent Colors)
+                                    fill = CONTINENT_COLORS[CONTINENT] || "#e2e8f0";
+                                }
 
                                 const baseStyle = {
                                     default: {
-                                        fill: matches ? baseFill : "#f1f5f9",
+                                        fill: matches ? fill : "#f1f5f9", // fade out if search doesn't match
                                         outline: "none",
                                         stroke: "#ffffff",
                                         strokeWidth: 0.6,
+                                        transition: "all 250ms",
                                     } as React.CSSProperties,
                                     hover: {
-                                        fill: "#0ea5e9",
+                                        fill: "#fbbf24", // amber-400 for hover
                                         outline: "none",
                                         cursor: "pointer",
+                                        stroke: "#fff",
+                                        strokeWidth: 1.2,
                                     } as React.CSSProperties,
                                     pressed: {
-                                        fill: "#0284c7",
+                                        fill: "#f59e0b",
                                         outline: "none",
                                     } as React.CSSProperties,
                                 };

@@ -13,6 +13,7 @@ import { Modal } from "./components/Modal";
 import { Tooltip } from "./components/Tooltip";
 import { Map } from "./components/Map";
 import { Sidebar } from "./components/Sidebar";
+import { ReportTable } from "./types/report";
 
 /** ------------------------------------------------
  *  Utils
@@ -47,6 +48,9 @@ export default function InteractiveWorldMapApp() {
   const [dbCountries, setDbCountries] = useState<CountryRow[]>([]);
 
   const [plants, setPlants] = useState<NuclearPlantClientRow[]>([]);
+
+  // Report Visualization State
+  const [selectedTable, setSelectedTable] = useState<ReportTable | null>(null);
 
   // Uygulama açılırken DB’deki ülke listesini al (API üzerinden Neon)
   useEffect(() => {
@@ -106,10 +110,10 @@ export default function InteractiveWorldMapApp() {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
-              🌍
+              📊
             </span>
             <h1 className="text-xl font-semibold">
-              World Map — Select Countries
+              Status and Trends in Spent Fuel Management
             </h1>
           </div>
           <div className="ml-auto flex items-center gap-3">
@@ -140,14 +144,34 @@ export default function InteractiveWorldMapApp() {
           setSelected={setSelected}
           setFocusedIso={setFocusedIso}
           loadCountry={loadCountry}
+          // Pass visualization data
+          selectedTable={selectedTable}
         />
         {hover && (
           <Tooltip x={hover.x} y={hover.y}>
             {hover.name} ({hover.iso})
+            {/* Show value if a table is selected */}
+            {selectedTable && hover.iso && (
+              <div className="mt-1 border-t border-slate-700 pt-1 font-normal text-slate-300">
+                {(() => {
+                  const row = selectedTable.data.find(
+                    (r) => r[selectedTable.mapKey || "iso3"] === hover.iso
+                  );
+                  if (row && selectedTable.valueKey) {
+                    return `${selectedTable.valueKey}: ${row[selectedTable.valueKey]}`;
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
           </Tooltip>
         )}
 
-        <Sidebar dbCountries={dbCountries} />
+        <Sidebar
+          dbCountries={dbCountries}
+          selectedTable={selectedTable}
+          onSelectTable={setSelectedTable}
+        />
       </main>
 
       <footer className="mx-auto max-w-7xl px-4 pb-6 text-center text-xs text-slate-500">
