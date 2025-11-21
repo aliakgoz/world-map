@@ -11,7 +11,9 @@ import { WORLD_TOPO_JSON, CONTINENT_COLORS, NAME_TO_ISO3 } from "../constants";
 import { CountryRow } from "../lib/db";
 import { ReportTable } from "../types/report";
 import { NUCLEAR_POWER_PLANTS, NuclearPlant } from "../data/npp_data";
+import { WASTE_FACILITIES, WasteFacility } from "../data/waste_data";
 import { PlantPopup } from "./PlantPopup";
+import { WastePopup } from "./WastePopup";
 
 type MapProps = {
     dbCountries: CountryRow[];
@@ -29,22 +31,16 @@ type MapProps = {
     loadCountry: (iso: string, name: string) => void;
     selectedTable: ReportTable | null;
     showNPP: boolean;
+    showWaste: boolean;
 };
 
 // Simple color scale for data visualization
 function getDataColor(value: number, max: number): string {
-    // Blue scale: #eff6ff (50) to #1e3a8a (900)
     if (value === 0) return "#eff6ff";
     const ratio = Math.min(value / max, 1);
-
-    // Interpolate between light blue and dark blue
-    // Light: 219, 234, 254 (blue-100)
-    // Dark: 30, 58, 138 (blue-900)
-
     const r = Math.round(219 - (219 - 30) * ratio);
     const g = Math.round(234 - (234 - 58) * ratio);
     const b = Math.round(254 - (254 - 138) * ratio);
-
     return `rgb(${r}, ${g}, ${b})`;
 }
 
@@ -68,6 +64,18 @@ const groupPlantsByLocation = (plants: NuclearPlant[]) => {
     return groups;
 };
 
+// Helper to group waste facilities by location
+const groupWasteByLocation = (facilities: WasteFacility[]) => {
+    const groups: Record<string, WasteFacility[]> = {};
+    facilities.forEach(fac => {
+        if (!fac.latitude || !fac.longitude) return;
+        const key = `${fac.latitude},${fac.longitude}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(fac);
+    });
+    return groups;
+};
+
 export const Map = memo(function Map({
     dbCountries,
     query,
@@ -78,10 +86,12 @@ export const Map = memo(function Map({
     loadCountry,
     selectedTable,
     showNPP,
+    showWaste,
 }: MapProps) {
     // Controlled zoom state
     const [position, setPosition] = useState({ coordinates: [0, 20], zoom: 1 });
     const [selectedPlant, setSelectedPlant] = useState<NuclearPlant | null>(null);
+    const [selectedWaste, setSelectedWaste] = useState<WasteFacility | null>(null);
     const [hoveredCluster, setHoveredCluster] = useState<string | null>(null);
 
     // Calculate max value for the current table to scale colors
@@ -95,12 +105,12 @@ export const Map = memo(function Map({
     }, [selectedTable]);
 
     // Calculate marker radius based on zoom to keep it visually consistent
-    // Base radius 2 at zoom 1. As zoom increases, radius decreases.
     const markerRadius = useMemo(() => {
         return 2 / position.zoom;
     }, [position.zoom]);
 
     const groupedPlants = useMemo(() => groupPlantsByLocation(NUCLEAR_POWER_PLANTS), []);
+    const groupedWaste = useMemo(() => groupWasteByLocation(WASTE_FACILITIES), []);
 
     function handleMoveEnd(position: { coordinates: [number, number]; zoom: number }) {
         setPosition(position);
@@ -112,6 +122,12 @@ export const Map = memo(function Map({
                 <PlantPopup
                     plant={selectedPlant}
                     onClose={() => setSelectedPlant(null)}
+                />
+            )}
+            {selectedWaste && (
+                <WastePopup
+                    facility={selectedWaste}
+                    onClose={() => setSelectedWaste(null)}
                 />
             )}
 
@@ -148,7 +164,6 @@ export const Map = memo(function Map({
                                     props.CONTINENT ?? props.continent ?? "Unknown"
                                 );
 
-                                // Bazı ülkelerde ISO_A3 = -99 olabiliyor → isimden fallback
                                 const isoNormalized =
                                     rawISO && rawISO !== "-99"
                                         ? rawISO
@@ -160,11 +175,9 @@ export const Map = memo(function Map({
                                     NAME.toLowerCase().includes(q) ||
                                     isoNormalized.toLowerCase().includes(q);
 
-                                // Determine fill color
-                                let fill = "#e2e8f0"; // default gray
+                                let fill = "#e2e8f0";
 
                                 if (selectedTable && selectedTable.valueKey) {
-                                    // Visualization Mode
                                     const row = selectedTable.data.find(
                                         (r) => r[selectedTable.mapKey || "iso3"] === isoNormalized
                                     );
@@ -173,7 +186,6 @@ export const Map = memo(function Map({
                                         fill = getDataColor(val, maxValue);
                                     }
                                 } else {
-                                    // Default Mode (Continent Colors)
                                     fill = CONTINENT_COLORS[CONTINENT] || "#e2e8f0";
                                 }
 
@@ -215,14 +227,14 @@ export const Map = memo(function Map({
                                         }}
                                         style={{
                                             default: {
-                                                fill: matches ? fill : "#f1f5f9", // fade out if search doesn't match
+                                                fill: matches ? fill : "#f1f5f9",
                                                 outline: "none",
                                                 stroke: "#ffffff",
                                                 strokeWidth: 0.6,
                                                 transition: "all 250ms",
                                             },
                                             hover: {
-                                                fill: "#fbbf24", // amber-400 for hover
+                                                fill: "#fbbf24",
                                                 outline: "none",
                                                 cursor: "pointer",
                                                 stroke: "#fff",
@@ -242,22 +254,19 @@ export const Map = memo(function Map({
                         }
                     </Geographies>
 
-                    {/* NPP Markers with Clustering/Spiderify */}
+                    {/* NPP Markers */}
                     {showNPP && Object.entries(groupedPlants).map(([key, plants]) => {
                         const [lat, lng] = key.split(',').map(Number);
                         const isCluster = plants.length > 1;
                         const isHovered = hoveredCluster === key;
-                        // Spiderify only at higher zoom levels (e.g., >= 3) and when hovered
                         const shouldSpiderify = isCluster && position.zoom >= 3 && isHovered;
 
                         if (shouldSpiderify) {
-                            // Render spiderified markers
                             return (
                                 <g key={key} onMouseLeave={() => setHoveredCluster(null)}>
                                     {plants.map((plant, index) => {
-                                        // Calculate offset in degrees
                                         const angle = (index / plants.length) * 2 * Math.PI;
-                                        const offset = 1.5 / position.zoom; // Dynamic offset
+                                        const offset = 1.5 / position.zoom;
                                         const spiderLat = lat + Math.cos(angle) * offset;
                                         const spiderLng = lng + Math.sin(angle) * offset;
 
@@ -269,10 +278,10 @@ export const Map = memo(function Map({
                                                 <circle
                                                     r={markerRadius}
                                                     fill={getNPPColor(plant.Status)}
-                                                    className="animate-heartbeat"
-                                                    style={{ transformBox: 'fill-box', cursor: 'pointer' }}
+                                                    style={{ transformBox: 'fill-box', cursor: 'pointer', pointerEvents: 'all' }}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
+                                                        e.preventDefault();
                                                         setSelectedPlant(plant);
                                                     }}
                                                     onMouseEnter={(event: React.MouseEvent<SVGCircleElement, MouseEvent>) => {
@@ -293,7 +302,6 @@ export const Map = memo(function Map({
                             );
                         }
 
-                        // Render single marker or cluster center
                         return (
                             <Marker
                                 key={key}
@@ -304,7 +312,6 @@ export const Map = memo(function Map({
                                         if (isCluster) {
                                             setHoveredCluster(key);
                                         } else {
-                                            // Standard hover for single plant
                                             const plant = plants[0];
                                             const { clientX, clientY } = event;
                                             setHover({
@@ -318,23 +325,24 @@ export const Map = memo(function Map({
                                     onMouseLeave={() => setHover(null)}
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        e.preventDefault();
                                         if (!isCluster) {
                                             setSelectedPlant(plants[0]);
                                         }
                                     }}
-                                    style={{ cursor: 'pointer' }}
+                                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
                                 >
                                     <circle
                                         r={markerRadius}
                                         fill={isCluster ? "#ffffff" : getNPPColor(plants[0].Status)}
                                         stroke={isCluster ? "#334155" : "none"}
                                         strokeWidth={isCluster ? 0.5 : 0}
-                                        className={!isCluster ? "animate-heartbeat" : ""}
+                                        style={{ transformBox: 'fill-box' }}
                                     />
                                     {isCluster && (
                                         <text
                                             textAnchor="middle"
-                                            y={markerRadius / 2} // Center vertically roughly
+                                            y={markerRadius / 2}
                                             style={{
                                                 fontFamily: "system-ui",
                                                 fill: "#334155",
@@ -344,6 +352,117 @@ export const Map = memo(function Map({
                                             }}
                                         >
                                             {plants.length}
+                                        </text>
+                                    )}
+                                </g>
+                            </Marker>
+                        );
+                    })}
+
+                    {/* Waste Facilities Markers */}
+                    {showWaste && Object.entries(groupedWaste).map(([key, facilities]) => {
+                        const [lat, lng] = key.split(',').map(Number);
+                        const isCluster = facilities.length > 1;
+                        const isHovered = hoveredCluster === `waste-${key}`;
+                        const shouldSpiderify = isCluster && position.zoom >= 3 && isHovered;
+
+                        if (shouldSpiderify) {
+                            return (
+                                <g key={`waste-${key}`} onMouseLeave={() => setHoveredCluster(null)}>
+                                    {facilities.map((fac, index) => {
+                                        const angle = (index / facilities.length) * 2 * Math.PI;
+                                        const offset = 1.5 / position.zoom;
+                                        const spiderLat = lat + Math.cos(angle) * offset;
+                                        const spiderLng = lng + Math.sin(angle) * offset;
+
+                                        return (
+                                            <Marker
+                                                key={`waste-${fac.id}`}
+                                                coordinates={[spiderLng, spiderLat]}
+                                            >
+                                                <rect
+                                                    width={markerRadius * 2}
+                                                    height={markerRadius * 2}
+                                                    x={-markerRadius}
+                                                    y={-markerRadius}
+                                                    fill="#f97316" // Orange-500
+                                                    style={{ transformBox: 'fill-box', cursor: 'pointer', pointerEvents: 'all' }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        setSelectedWaste(fac);
+                                                    }}
+                                                    onMouseEnter={(event: React.MouseEvent<SVGElement, MouseEvent>) => {
+                                                        const { clientX, clientY } = event;
+                                                        setHover({
+                                                            name: `${fac.name} (${fac.facility_type})`,
+                                                            iso: fac.iso3,
+                                                            x: clientX,
+                                                            y: clientY,
+                                                        });
+                                                    }}
+                                                    onMouseLeave={() => setHover(null)}
+                                                />
+                                            </Marker>
+                                        );
+                                    })}
+                                </g>
+                            );
+                        }
+
+                        return (
+                            <Marker
+                                key={`waste-${key}`}
+                                coordinates={[lng, lat]}
+                            >
+                                <g
+                                    onMouseEnter={(event: React.MouseEvent<SVGGElement, MouseEvent>) => {
+                                        if (isCluster) {
+                                            setHoveredCluster(`waste-${key}`);
+                                        } else {
+                                            const fac = facilities[0];
+                                            const { clientX, clientY } = event;
+                                            setHover({
+                                                name: `${fac.name} (${fac.facility_type})`,
+                                                iso: fac.iso3,
+                                                x: clientX,
+                                                y: clientY,
+                                            });
+                                        }
+                                    }}
+                                    onMouseLeave={() => setHover(null)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        if (!isCluster) {
+                                            setSelectedWaste(facilities[0]);
+                                        }
+                                    }}
+                                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                                >
+                                    <rect
+                                        width={markerRadius * 2}
+                                        height={markerRadius * 2}
+                                        x={-markerRadius}
+                                        y={-markerRadius}
+                                        fill={isCluster ? "#ffffff" : "#f97316"}
+                                        stroke={isCluster ? "#c2410c" : "none"}
+                                        strokeWidth={isCluster ? 0.5 : 0}
+                                        style={{ transformBox: 'fill-box' }}
+                                    />
+                                    {isCluster && (
+                                        <text
+                                            textAnchor="middle"
+                                            y={markerRadius / 2}
+                                            style={{
+                                                fontFamily: "system-ui",
+                                                fill: "#c2410c",
+                                                fontSize: markerRadius * 1.5,
+                                                fontWeight: "bold",
+                                                pointerEvents: "none"
+                                            }}
+                                        >
+                                            {facilities.length}
                                         </text>
                                     )}
                                 </g>

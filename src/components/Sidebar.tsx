@@ -53,7 +53,7 @@ export function Sidebar({
                         />
                         <div className="flex flex-col">
                             <span className="text-sm font-medium text-slate-900">Radioactive Waste Facilities</span>
-                            <span className="text-xs text-slate-500">Storage & Disposal Sites (Coming Soon)</span>
+                            <span className="text-xs text-slate-500">Storage & Disposal Sites</span>
                         </div>
                     </label>
                 </div>
@@ -91,8 +91,19 @@ export function Sidebar({
                     </div>
                 )}
 
+                {showWaste && (
+                    <div className="mb-4">
+                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Waste Facilities</h3>
+                        <ul className="space-y-2">
+                            <li className="flex items-center gap-3 text-sm">
+                                <span className="inline-block h-3 w-3 bg-orange-500 shadow-sm animate-pulse" />
+                                <span className="text-slate-600">Waste Facility</span>
+                            </li>
+                        </ul>
+                    </div>
+                )}
 
-                {/* Continents Legend Removed */}
+
             </div>
 
             {/* Debug Info */}

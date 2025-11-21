@@ -183,6 +183,7 @@ export default function InteractiveWorldMapApp() {
                 // Pass visualization data
                 selectedTable={selectedTable}
                 showNPP={showNPP}
+                showWaste={showWaste}
               />
               {hover && (
                 <Tooltip x={hover.x} y={hover.y}>

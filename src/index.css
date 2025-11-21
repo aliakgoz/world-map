@@ -48,9 +48,4 @@ body,
       opacity: 1;
     }
   }
-
-  .animate-heartbeat {
-    animation: heartbeat 2s infinite ease-in-out;
-    transform-origin: center;
-  }
 }

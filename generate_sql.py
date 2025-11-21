@@ -1,76 +1,107 @@
 import json
+import os
+
+def escape_string(s):
+    if s is None:
+        return "NULL"
+    return "'" + str(s).replace("'", "''") + "'"
 
 def generate_sql():
-    # Read from the new source file in the root (or relative to script)
-    # Assuming script is in website_demo/world-map and json is in the same dir based on user context,
-    # but user said "rootdaki nuclear_power_plants.json". 
-    # Based on file list: c:\Genel\03_GOREV\2025\Viyana- Spent Fuel\website_demo\world-map\nuclear_power_plants.json
-    # So it is in the same directory as the script.
-    with open('nuclear_power_plants.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    # --- Nuclear Plants ---
+    plants_json_path = 'nuclear_plants_filled.json'
+    plants_sql_path = 'populate_data.sql'
 
-    sql = """
-DROP TABLE IF EXISTS nuclear_plants;
-CREATE TABLE nuclear_plants (
-    id INTEGER PRIMARY KEY,
-    name VARCHAR(255),
-    latitude NUMERIC,
-    longitude NUMERIC,
-    country VARCHAR(255),
-    country_code VARCHAR(10),
-    status VARCHAR(50),
-    reactor_type VARCHAR(50),
-    reactor_model VARCHAR(255),
-    construction_start_at DATE,
-    operational_from DATE,
-    operational_to DATE,
-    capacity NUMERIC,
-    last_updated_at TIMESTAMP WITH TIME ZONE,
-    source VARCHAR(255),
-    iaea_id INTEGER
-);
+    if os.path.exists(plants_json_path):
+        with open(plants_json_path, 'r', encoding='utf-8') as f:
+            plants = json.load(f)
 
-INSERT INTO nuclear_plants (id, name, latitude, longitude, country, country_code, status, reactor_type, reactor_model, construction_start_at, operational_from, operational_to, capacity, last_updated_at, source, iaea_id) VALUES 
-"""
-    
-    values_list = []
-    for item in data:
-        # Helper to safely format strings for SQL
-        def sql_str(val):
-            if not val:
-                return 'NULL'
-            # Escape single quotes by doubling them
-            escaped = str(val).replace("'", "''")
-            return f"'{escaped}'"
+        sql_statements = []
+        sql_statements.append("DELETE FROM nuclear_plants;")
+        
+        for plant in plants:
+            # Handle potentially missing fields with defaults or NULL
+            lat = plant.get('Latitude')
+            lon = plant.get('Longitude')
+            
+            if lat is None or lon is None:
+                continue # Skip if no coordinates
 
-        def sql_num(val):
-            if val is None:
-                return 'NULL'
-            return str(val)
+            values = [
+                str(plant.get('Id', 'NULL')),
+                escape_string(plant.get('Name')),
+                str(lat),
+                str(lon),
+                escape_string(plant.get('Country')),
+                escape_string(plant.get('CountryCode')),
+                escape_string(plant.get('Status')),
+                escape_string(plant.get('ReactorType')),
+                escape_string(plant.get('ReactorModel')),
+                escape_string(plant.get('ConstructionStartAt')),
+                escape_string(plant.get('OperationalFrom')),
+                escape_string(plant.get('OperationalTo')),
+                str(plant.get('Capacity', 'NULL')),
+                escape_string(plant.get('LastUpdatedAt')),
+                escape_string(plant.get('Source')),
+                str(plant.get('IAEAId', 'NULL'))
+            ]
+            
+            sql = f"INSERT INTO nuclear_plants (Id, Name, Latitude, Longitude, Country, CountryCode, Status, ReactorType, ReactorModel, ConstructionStartAt, OperationalFrom, OperationalTo, Capacity, LastUpdatedAt, Source, IAEAId) VALUES ({', '.join(values)});"
+            sql_statements.append(sql)
 
-        id_val = sql_num(item.get('Id'))
-        name = sql_str(item.get('Name'))
-        latitude = sql_num(item.get('Latitude'))
-        longitude = sql_num(item.get('Longitude'))
-        country = sql_str(item.get('Country'))
-        country_code = sql_str(item.get('CountryCode'))
-        status = sql_str(item.get('Status'))
-        reactor_type = sql_str(item.get('ReactorType'))
-        reactor_model = sql_str(item.get('ReactorModel'))
-        construction_start_at = sql_str(item.get('ConstructionStartAt'))
-        operational_from = sql_str(item.get('OperationalFrom'))
-        operational_to = sql_str(item.get('OperationalTo'))
-        capacity = sql_num(item.get('Capacity'))
-        last_updated_at = sql_str(item.get('LastUpdatedAt'))
-        source = sql_str(item.get('Source'))
-        iaea_id = sql_num(item.get('IAEAId'))
+        with open(plants_sql_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(sql_statements))
+        
+        print(f"Generated {len(sql_statements)} INSERT statements for nuclear_plants in {plants_sql_path}")
+    else:
+        print(f"File not found: {plants_json_path}")
 
-        values_list.append(f"({id_val}, {name}, {latitude}, {longitude}, {country}, {country_code}, {status}, {reactor_type}, {reactor_model}, {construction_start_at}, {operational_from}, {operational_to}, {capacity}, {last_updated_at}, {source}, {iaea_id})")
+    # --- Waste Facilities ---
+    waste_json_path = 'radioactive_waste_facilities.json'
+    waste_sql_path = 'waste_facilities.sql'
 
-    sql += ",\n".join(values_list) + ";"
-    
-    with open('nuclear_plants.sql', 'w', encoding='utf-8') as f:
-        f.write(sql)
+    if os.path.exists(waste_json_path):
+        with open(waste_json_path, 'r', encoding='utf-8') as f:
+            facilities = json.load(f)
+
+        waste_sql = []
+        waste_sql.append("DROP TABLE IF EXISTS waste_facilities;")
+        waste_sql.append("CREATE TABLE waste_facilities (id INTEGER PRIMARY KEY, name TEXT, site_name TEXT, facility_type TEXT, waste_level TEXT, waste_types TEXT, status TEXT, commissioning_year INTEGER, closure_year INTEGER, latitude REAL, longitude REAL, iso3 TEXT, source_cite TEXT);")
+        waste_sql.append("DELETE FROM waste_facilities;")
+
+        for fac in facilities:
+             # Handle potentially missing fields with defaults or NULL
+            lat = fac.get('latitude')
+            lon = fac.get('longitude')
+            
+            if lat is None or lon is None:
+                continue # Skip if no coordinates
+
+            values = [
+                str(fac.get('id', 'NULL')),
+                escape_string(fac.get('name')),
+                escape_string(fac.get('site_name')),
+                escape_string(fac.get('facility_type')),
+                escape_string(fac.get('waste_level')),
+                escape_string(fac.get('waste_types')),
+                escape_string(fac.get('status')),
+                str(fac.get('commissioning_year') if fac.get('commissioning_year') is not None else 'NULL'),
+                str(fac.get('closure_year') if fac.get('closure_year') is not None else 'NULL'),
+                str(lat),
+                str(lon),
+                escape_string(fac.get('iso3')),
+                escape_string(fac.get('source_cite'))
+            ]
+
+            sql = f"INSERT INTO waste_facilities (id, name, site_name, facility_type, waste_level, waste_types, status, commissioning_year, closure_year, latitude, longitude, iso3, source_cite) VALUES ({', '.join(values)});"
+            waste_sql.append(sql)
+
+        with open(waste_sql_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(waste_sql))
+        
+        print(f"Generated {len(waste_sql)} INSERT statements for waste_facilities in {waste_sql_path}")
+
+    else:
+        print(f"File not found: {waste_json_path}")
 
 if __name__ == "__main__":
     generate_sql()
