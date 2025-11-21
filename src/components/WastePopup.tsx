@@ -1,7 +1,7 @@
-import { WasteFacility } from "../data/waste_data";
+import { WasteFacilityRow } from "../lib/db";
 
 type WastePopupProps = {
-    facility: WasteFacility;
+    facility: WasteFacilityRow;
     onClose: () => void;
 };
 
@@ -31,9 +31,9 @@ export function WastePopup({ facility, onClose }: WastePopupProps) {
                     <div>
                         <span className="block text-xs font-medium text-slate-500">Status</span>
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${facility.status.toLowerCase().includes('operational') ? 'bg-green-100 text-green-700' :
-                                facility.status.toLowerCase().includes('construction') ? 'bg-yellow-100 text-yellow-700' :
-                                    facility.status.toLowerCase().includes('closed') || facility.status.toLowerCase().includes('decommission') ? 'bg-red-100 text-red-700' :
-                                        'bg-slate-100 text-slate-700'
+                            facility.status.toLowerCase().includes('construction') ? 'bg-yellow-100 text-yellow-700' :
+                                facility.status.toLowerCase().includes('closed') || facility.status.toLowerCase().includes('decommission') ? 'bg-red-100 text-red-700' :
+                                    'bg-slate-100 text-slate-700'
                             }`}>
                             {facility.status}
                         </span>

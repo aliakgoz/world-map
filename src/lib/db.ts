@@ -32,6 +32,22 @@ export type CountryProfileRow = {
 
 export type CountryWithProfile = CountryRow & Partial<CountryProfileRow>;
 
+export type WasteFacilityRow = {
+  id: number;
+  iso3: string;
+  name: string;
+  site_name: string;
+  facility_type: string;
+  waste_level: string;
+  waste_types: string;
+  status: string;
+  commissioning_year: number | null;
+  closure_year: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  source_cite: string;
+};
+
 // ==== Client helper (browser) ====
 // Bu fonksiyonlar artık JSON dosyalarından veri okuyacak şekilde güncellenebilir 
 // veya API çağrıları yapmaya devam edebilir. 
@@ -62,4 +78,8 @@ export async function getCountryWithProfileClient(
     iso3.toUpperCase()
   )}`;
   return apiGet<CountryWithProfile | null>(url);
+}
+
+export async function listWasteFacilitiesClient(): Promise<WasteFacilityRow[]> {
+  return apiGet<WasteFacilityRow[]>("/api/waste-facilities");
 }

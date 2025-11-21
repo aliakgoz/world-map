@@ -93,13 +93,65 @@ export function Sidebar({
 
                 {showWaste && (
                     <div className="mb-4">
-                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Waste Facilities</h3>
-                        <ul className="space-y-2">
-                            <li className="flex items-center gap-3 text-sm">
-                                <span className="inline-block h-3 w-3 bg-orange-500 shadow-sm animate-pulse" />
-                                <span className="text-slate-600">Waste Facility</span>
-                            </li>
-                        </ul>
+                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Waste Facilities</h3>
+
+                        {/* Facility Type */}
+                        <div className="mb-3">
+                            <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Facility Type</h4>
+                            <ul className="space-y-1.5">
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 bg-orange-600 shadow-sm" />
+                                    <span className="text-slate-600">Disposal</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 bg-orange-500 shadow-sm" />
+                                    <span className="text-slate-600">Storage</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 bg-orange-400 shadow-sm" />
+                                    <span className="text-slate-600">Interim Storage</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {/* Waste Level */}
+                        <div className="mb-3">
+                            <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Waste Level</h4>
+                            <ul className="space-y-1.5">
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 shadow-sm" />
+                                    <span className="text-slate-600">HLW (High-Level)</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-500 shadow-sm" />
+                                    <span className="text-slate-600">ILW (Intermediate)</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 shadow-sm" />
+                                    <span className="text-slate-600">LLW (Low-Level)</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500 shadow-sm" />
+                                    <span className="text-slate-600">Spent Fuel</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {/* Waste Types */}
+                        <div>
+                            <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Common Waste Types</h4>
+                            <ul className="space-y-1.5">
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="text-slate-600">• Spent Fuel</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="text-slate-600">• Operational Waste</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="text-slate-600">• Decommissioning Waste</span>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 )}
 

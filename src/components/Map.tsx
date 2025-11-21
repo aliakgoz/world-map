@@ -8,10 +8,9 @@ import {
 } from "react-simple-maps";
 import { RSMFeature } from "../types";
 import { WORLD_TOPO_JSON, CONTINENT_COLORS, NAME_TO_ISO3 } from "../constants";
-import { CountryRow } from "../lib/db";
+import { CountryRow, WasteFacilityRow } from "../lib/db";
 import { ReportTable } from "../types/report";
 import { NUCLEAR_POWER_PLANTS, NuclearPlant } from "../data/npp_data";
-import { WASTE_FACILITIES, WasteFacility } from "../data/waste_data";
 import { PlantPopup } from "./PlantPopup";
 import { WastePopup } from "./WastePopup";
 
@@ -32,6 +31,7 @@ type MapProps = {
     selectedTable: ReportTable | null;
     showNPP: boolean;
     showWaste: boolean;
+    wasteFacilities: WasteFacilityRow[];
 };
 
 // Simple color scale for data visualization
@@ -65,8 +65,8 @@ const groupPlantsByLocation = (plants: NuclearPlant[]) => {
 };
 
 // Helper to group waste facilities by location
-const groupWasteByLocation = (facilities: WasteFacility[]) => {
-    const groups: Record<string, WasteFacility[]> = {};
+const groupWasteByLocation = (facilities: WasteFacilityRow[]) => {
+    const groups: Record<string, WasteFacilityRow[]> = {};
     facilities.forEach(fac => {
         if (!fac.latitude || !fac.longitude) return;
         const key = `${fac.latitude},${fac.longitude}`;
@@ -87,11 +87,12 @@ export const Map = memo(function Map({
     selectedTable,
     showNPP,
     showWaste,
+    wasteFacilities,
 }: MapProps) {
     // Controlled zoom state
     const [position, setPosition] = useState({ coordinates: [0, 20], zoom: 1 });
     const [selectedPlant, setSelectedPlant] = useState<NuclearPlant | null>(null);
-    const [selectedWaste, setSelectedWaste] = useState<WasteFacility | null>(null);
+    const [selectedWaste, setSelectedWaste] = useState<WasteFacilityRow | null>(null);
     const [hoveredCluster, setHoveredCluster] = useState<string | null>(null);
 
     // Calculate max value for the current table to scale colors
@@ -115,7 +116,7 @@ export const Map = memo(function Map({
     }, [markerRadius]);
 
     const groupedPlants = useMemo(() => groupPlantsByLocation(NUCLEAR_POWER_PLANTS), []);
-    const groupedWaste = useMemo(() => groupWasteByLocation(WASTE_FACILITIES), []);
+    const groupedWaste = useMemo(() => groupWasteByLocation(wasteFacilities), [wasteFacilities]);
 
     function handleMoveEnd(position: { coordinates: [number, number]; zoom: number }) {
         setPosition(position);

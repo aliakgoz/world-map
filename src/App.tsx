@@ -8,8 +8,10 @@ import { StatisticsChart } from "./components/StatisticsChart";
 import {
   CountryWithProfile,
   CountryRow,
+  WasteFacilityRow,
   listCountriesClient,
   getCountryWithProfileClient,
+  listWasteFacilitiesClient,
 } from "./lib/db";
 import { NAME_TO_ISO3 } from "./constants";
 import { ReportTable } from "./types/report";
@@ -56,6 +58,7 @@ export default function InteractiveWorldMapApp() {
   // Facilities State
   const [showNPP, setShowNPP] = useState(false);
   const [showWaste, setShowWaste] = useState(false);
+  const [wasteFacilities, setWasteFacilities] = useState<WasteFacilityRow[]>([]);
 
   // Uygulama açılırken DB’deki ülke listesini al (API üzerinden Neon)
   useEffect(() => {
@@ -64,6 +67,10 @@ export default function InteractiveWorldMapApp() {
         const rows = await listCountriesClient();
         setDbCountries(rows);
         console.log("DB countries:", rows.map((c) => c.iso3));
+
+        const facilities = await listWasteFacilitiesClient();
+        setWasteFacilities(facilities);
+        console.log("Waste facilities loaded:", facilities.length);
       } catch (err) {
         console.error("initial load error:", err);
       }
@@ -184,6 +191,7 @@ export default function InteractiveWorldMapApp() {
                 selectedTable={selectedTable}
                 showNPP={showNPP}
                 showWaste={showWaste}
+                wasteFacilities={wasteFacilities}
               />
               {hover && (
                 <Tooltip x={hover.x} y={hover.y}>
