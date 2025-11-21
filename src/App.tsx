@@ -1,9 +1,10 @@
 // src/App.tsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Map } from "./components/Map";
 import { Sidebar } from "./components/Sidebar";
 import { Modal } from "./components/Modal";
 import { Tooltip } from "./components/Tooltip";
+import { StatisticsChart } from "./components/StatisticsChart";
 import {
   CountryWithProfile,
   CountryRow,
@@ -12,8 +13,7 @@ import {
 } from "./lib/db";
 import { NAME_TO_ISO3 } from "./constants";
 import { ReportTable } from "./types/report";
-import countriesJson from "./data/source/countries.json"; // Import directly
-import countryProfiles from "./data/source/country_profiles.json";
+import { COUNTRIES, COUNTRY_PROFILES, REACTOR_STATISTICS } from "./data/sql_data";
 
 /** ------------------------------------------------
  *  Utils
@@ -50,34 +50,8 @@ export default function InteractiveWorldMapApp() {
   // Report Visualization State
   const [selectedTable, setSelectedTable] = useState<ReportTable | null>(null);
 
-  // New state for modal
-  const [selectedCountryIso, setSelectedCountryIso] = useState<string | null>(null);
-  const [selectedCountryProfile, setSelectedCountryProfile] = useState<CountryWithProfile | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Handle country click
-  const handleCountryClick = async (geo: any) => {
-    const iso3 = geo.properties.ISO_A3;
-    const countryName = geo.properties.NAME;
-
-    // Find basic info
-    const basicInfo = dbCountries.find((c) => c.iso3 === iso3);
-
-    // Find profile from JSON (Mocking API)
-    const profiles = countryProfiles; // Already imported
-    const profile = profiles.find((p: any) => p.iso3 === iso3);
-
-    const fullProfile: CountryWithProfile = {
-      iso3,
-      name: countryName,
-      ...basicInfo,
-      ...profile,
-    };
-
-    setSelectedCountryIso(iso3);
-    setSelectedCountryProfile(fullProfile);
-    setIsModalOpen(true);
-  };
+  // View Mode State
+  const [viewMode, setViewMode] = useState<'map' | 'statistics'>('map');
 
   // Uygulama açılırken DB’deki ülke listesini al (API üzerinden Neon)
   useEffect(() => {
@@ -98,10 +72,33 @@ export default function InteractiveWorldMapApp() {
     setDbData(null);
 
     try {
-      // 1) ISO3 ile dene
+      // 1) Try to find in local SQL data first (since we just populated it)
+      const localProfile = COUNTRY_PROFILES.find(p => p.iso3 === iso3);
+      const localStats = REACTOR_STATISTICS.find(s => s.iso3 === iso3);
+
+      if (localProfile) {
+        // Construct CountryWithProfile from local data
+        const data: CountryWithProfile = {
+          iso3: localProfile.iso3,
+          name: name,
+          // Merge profile data
+          ...localProfile,
+          // Merge stats if available
+          ...(localStats ? {
+            reactors_in_operation: localStats.operational_units,
+            reactors_under_construction: localStats.under_construction_units,
+            // Map other fields if needed or keep them separate
+          } : {})
+        };
+        setDbData(data);
+        setLoading(false);
+        return;
+      }
+
+      // 2) Fallback to DB/API if not found locally
       let data = await getCountryWithProfileClient(iso3);
 
-      // 2) Yoksa isimden fallback ISO3 dene
+      // 3) Yoksa isimden fallback ISO3 dene
       if (!data) {
         const fallbackIso =
           NAME_TO_ISO3[name] ||
@@ -139,6 +136,23 @@ export default function InteractiveWorldMapApp() {
               Status and Trends in Spent Fuel Management
             </h1>
           </div>
+
+          {/* View Mode Switcher */}
+          <div className="flex bg-slate-100 p-1 rounded-lg mx-4">
+            <button
+              onClick={() => setViewMode('map')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Map View
+            </button>
+            <button
+              onClick={() => setViewMode('statistics')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'statistics' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Statistics
+            </button>
+          </div>
+
           <div className="ml-auto flex items-center gap-3">
             <input
               type="text"
@@ -157,43 +171,51 @@ export default function InteractiveWorldMapApp() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 p-4 lg:grid-cols-[1fr_320px]">
-        <Map
-          dbCountries={dbCountries}
-          query={query}
-          focusedIso={focusedIso}
-          setHover={setHover}
-          setSelected={setSelected}
-          setFocusedIso={setFocusedIso}
-          loadCountry={loadCountry}
-          // Pass visualization data
-          selectedTable={selectedTable}
-        />
-        {hover && (
-          <Tooltip x={hover.x} y={hover.y}>
-            {hover.name} ({hover.iso})
-            {/* Show value if a table is selected */}
-            {selectedTable && hover.iso && (
-              <div className="mt-1 border-t border-slate-700 pt-1 font-normal text-slate-300">
-                {(() => {
-                  const row = selectedTable.data.find(
-                    (r) => r[selectedTable.mapKey || "iso3"] === hover.iso
-                  );
-                  if (row && selectedTable.valueKey) {
-                    return `${selectedTable.valueKey}: ${row[selectedTable.valueKey]} `;
-                  }
-                  return null;
-                })()}
-              </div>
-            )}
-          </Tooltip>
-        )}
+      <main className="mx-auto max-w-7xl p-4">
+        {viewMode === 'map' ? (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+            <div className="relative">
+              <Map
+                dbCountries={dbCountries}
+                query={query}
+                focusedIso={focusedIso}
+                setHover={setHover}
+                setSelected={setSelected}
+                setFocusedIso={setFocusedIso}
+                loadCountry={loadCountry}
+                // Pass visualization data
+                selectedTable={selectedTable}
+              />
+              {hover && (
+                <Tooltip x={hover.x} y={hover.y}>
+                  {hover.name} ({hover.iso})
+                  {/* Show value if a table is selected */}
+                  {selectedTable && hover.iso && (
+                    <div className="mt-1 border-t border-slate-700 pt-1 font-normal text-slate-300">
+                      {(() => {
+                        const row = selectedTable.data.find(
+                          (r) => r[selectedTable.mapKey || "iso3"] === hover.iso
+                        );
+                        if (row && selectedTable.valueKey) {
+                          return `${selectedTable.valueKey}: ${row[selectedTable.valueKey]} `;
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </Tooltip>
+              )}
+            </div>
 
-        <Sidebar
-          dbCountries={dbCountries}
-          selectedTable={selectedTable}
-          onSelectTable={setSelectedTable}
-        />
+            <Sidebar
+              dbCountries={dbCountries}
+              selectedTable={selectedTable}
+              onSelectTable={setSelectedTable}
+            />
+          </div>
+        ) : (
+          <StatisticsChart data={REACTOR_STATISTICS} />
+        )}
       </main>
 
       <footer className="mx-auto max-w-7xl px-4 pb-6 text-center text-xs text-slate-500">
