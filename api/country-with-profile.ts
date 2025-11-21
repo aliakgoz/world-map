@@ -19,8 +19,9 @@ export default async function handler(req: any, res: any) {
 
     const iso3 = String(iso3Param).toUpperCase();
 
+    // Removed generic type argument <CountryWithProfile> to avoid lint error
     const rows =
-      await sql<CountryWithProfile>`
+      await sql`
       select
         c.iso3,
         c.name,

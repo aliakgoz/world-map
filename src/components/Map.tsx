@@ -52,6 +52,32 @@ function getNPPColor(status: string): string {
     return "#9ca3af"; // gray-400
 }
 
+function getWasteColor(facility: WasteFacilityRow): string {
+    const type = (facility.facility_type || "").toLowerCase();
+    if (type.includes("disposal")) return "#ea580c"; // orange-600
+    if (type.includes("interim")) return "#fb923c"; // orange-400
+    if (type.includes("storage")) return "#f97316"; // orange-500
+    return "#fdba74"; // orange-300
+}
+
+function getClusterColor(facilities: WasteFacilityRow[]): string {
+    const counts: Record<string, number> = {};
+    facilities.forEach(f => {
+        const color = getWasteColor(f);
+        counts[color] = (counts[color] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function getNPPClusterColor(plants: NuclearPlant[]): string {
+    const counts: Record<string, number> = {};
+    plants.forEach(p => {
+        const color = getNPPColor(p.Status);
+        counts[color] = (counts[color] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+}
+
 // Helper to group plants by location
 const groupPlantsByLocation = (plants: NuclearPlant[]) => {
     const groups: Record<string, NuclearPlant[]> = {};
@@ -90,7 +116,7 @@ export const Map = memo(function Map({
     wasteFacilities,
 }: MapProps) {
     // Controlled zoom state
-    const [position, setPosition] = useState({ coordinates: [0, 20], zoom: 1 });
+    const [position, setPosition] = useState({ coordinates: [0, 0], zoom: 1 });
     const [selectedPlant, setSelectedPlant] = useState<NuclearPlant | null>(null);
     const [selectedWaste, setSelectedWaste] = useState<WasteFacilityRow | null>(null);
     const [hoveredCluster, setHoveredCluster] = useState<string | null>(null);
@@ -107,12 +133,12 @@ export const Map = memo(function Map({
 
     // Calculate marker radius based on zoom to keep it visually consistent
     const markerRadius = useMemo(() => {
-        return 2 / position.zoom;
+        return 4 / position.zoom;
     }, [position.zoom]);
 
     // Cluster markers should be larger for better readability
     const clusterRadius = useMemo(() => {
-        return markerRadius * 1.8;
+        return markerRadius * 1.5;
     }, [markerRadius]);
 
     const groupedPlants = useMemo(() => groupPlantsByLocation(NUCLEAR_POWER_PLANTS), []);
@@ -138,7 +164,7 @@ export const Map = memo(function Map({
             )}
 
             <ComposableMap
-                projectionConfig={{ scale: 160 }}
+                projectionConfig={{ scale: 200 }}
                 className="h-full w-full"
             >
                 <ZoomableGroup
@@ -340,9 +366,9 @@ export const Map = memo(function Map({
                                 >
                                     <circle
                                         r={isCluster ? clusterRadius : markerRadius}
-                                        fill={isCluster ? "#ffffff" : getNPPColor(plants[0].Status)}
-                                        stroke={isCluster ? "#334155" : "none"}
-                                        strokeWidth={isCluster ? 0.3 / position.zoom : 0}
+                                        fill={isCluster ? getNPPClusterColor(plants) : getNPPColor(plants[0].Status)}
+                                        stroke={isCluster ? "#ffffff" : "none"}
+                                        strokeWidth={isCluster ? 2 / position.zoom : 0}
                                         style={{ transformBox: 'fill-box' }}
                                     />
                                     {isCluster && (
@@ -351,10 +377,11 @@ export const Map = memo(function Map({
                                             y={clusterRadius * 0.35}
                                             style={{
                                                 fontFamily: "system-ui",
-                                                fill: "#334155",
+                                                fill: "#ffffff",
                                                 fontSize: clusterRadius * 0.9,
                                                 fontWeight: "bold",
-                                                pointerEvents: "none"
+                                                pointerEvents: "none",
+                                                textShadow: "0px 0px 2px rgba(0,0,0,0.5)"
                                             }}
                                         >
                                             {plants.length}
@@ -380,7 +407,6 @@ export const Map = memo(function Map({
                                         const offset = 1.5 / position.zoom;
                                         const spiderLat = lat + Math.cos(angle) * offset;
                                         const spiderLng = lng + Math.sin(angle) * offset;
-
                                         return (
                                             <Marker
                                                 key={`waste-${fac.id}`}
@@ -391,7 +417,7 @@ export const Map = memo(function Map({
                                                     height={markerRadius * 2}
                                                     x={-markerRadius}
                                                     y={-markerRadius}
-                                                    fill="#f97316" // Orange-500
+                                                    fill={getWasteColor(fac)}
                                                     style={{ transformBox: 'fill-box', cursor: 'pointer', pointerEvents: 'all' }}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -447,13 +473,13 @@ export const Map = memo(function Map({
                                     style={{ cursor: 'pointer', pointerEvents: 'all' }}
                                 >
                                     <rect
-                                        width={isCluster ? clusterRadius * 2 : markerRadius * 2}
-                                        height={isCluster ? clusterRadius * 2 : markerRadius * 2}
-                                        x={isCluster ? -clusterRadius : -markerRadius}
-                                        y={isCluster ? -clusterRadius : -markerRadius}
-                                        fill={isCluster ? "#ffffff" : "#f97316"}
-                                        stroke={isCluster ? "#c2410c" : "none"}
-                                        strokeWidth={isCluster ? 0.3 / position.zoom : 0}
+                                        width={(isCluster ? clusterRadius : markerRadius) * 2}
+                                        height={(isCluster ? clusterRadius : markerRadius) * 2}
+                                        x={-(isCluster ? clusterRadius : markerRadius)}
+                                        y={-(isCluster ? clusterRadius : markerRadius)}
+                                        fill={isCluster ? getClusterColor(facilities) : getWasteColor(facilities[0])}
+                                        stroke={isCluster ? "#ffffff" : "none"}
+                                        strokeWidth={isCluster ? 2 / position.zoom : 0}
                                         style={{ transformBox: 'fill-box' }}
                                     />
                                     {isCluster && (
@@ -462,10 +488,11 @@ export const Map = memo(function Map({
                                             y={clusterRadius * 0.35}
                                             style={{
                                                 fontFamily: "system-ui",
-                                                fill: "#c2410c",
+                                                fill: "#ffffff",
                                                 fontSize: clusterRadius * 0.9,
                                                 fontWeight: "bold",
-                                                pointerEvents: "none"
+                                                pointerEvents: "none",
+                                                textShadow: "0px 0px 2px rgba(0,0,0,0.5)"
                                             }}
                                         >
                                             {facilities.length}

@@ -83,38 +83,37 @@ export default function InteractiveWorldMapApp() {
     setDbData(null);
 
     try {
-      // 1) Try to find in local SQL data first (since we just populated it)
-      const localProfile = COUNTRY_PROFILES.find(p => p.iso3 === iso3);
-      const localStats = REACTOR_STATISTICS.find(s => s.iso3 === iso3);
-
-      if (localProfile) {
-        // Construct CountryWithProfile from local data
-        const data: CountryWithProfile = {
-          name: name,
-          // Merge profile data
-          ...localProfile,
-          // Merge stats if available
-          ...(localStats ? {
-            reactors_in_operation: localStats.operational_units,
-            reactors_under_construction: localStats.under_construction_units,
-            // Map other fields if needed or keep them separate
-          } : {})
-        };
-        setDbData(data);
-        setLoading(false);
-        return;
-      }
-
-      // 2) Fallback to DB/API if not found locally
+      // 1) Try to fetch from DB/API first (Neon Postgres)
       let data = await getCountryWithProfileClient(iso3);
 
-      // 3) Yoksa isimden fallback ISO3 dene
+      // 2) If not found in DB, try fallback ISO3 from name
       if (!data) {
         const fallbackIso =
           NAME_TO_ISO3[name] ||
           NAME_TO_ISO3[name as keyof typeof NAME_TO_ISO3];
         if (fallbackIso) {
           data = await getCountryWithProfileClient(fallbackIso);
+        }
+      }
+
+      // 3) If still not found (or API failed and returned null/undefined), try local SQL data fallback
+      if (!data) {
+        const localProfile = COUNTRY_PROFILES.find(p => p.iso3 === iso3);
+        const localStats = REACTOR_STATISTICS.find(s => s.iso3 === iso3);
+
+        if (localProfile) {
+          // Construct CountryWithProfile from local data
+          data = {
+            name: name,
+            // Merge profile data
+            ...localProfile,
+            // Merge stats if available
+            ...(localStats ? {
+              reactors_in_operation: localStats.operational_units,
+              reactors_under_construction: localStats.under_construction_units,
+              // Map other fields if needed or keep them separate
+            } : {})
+          };
         }
       }
 

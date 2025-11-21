@@ -82,7 +82,13 @@ export async function getCountryWithProfileClient(
   const url = `/api/country-with-profile?iso3=${encodeURIComponent(
     iso3.toUpperCase()
   )}`;
-  return apiGet<CountryWithProfile | null>(url);
+
+  try {
+    return await apiGet<CountryWithProfile | null>(url);
+  } catch (error) {
+    console.warn("API failed for country profile, returning null:", error);
+    return null;
+  }
 }
 
 export async function listWasteFacilitiesClient(): Promise<WasteFacilityRow[]> {
