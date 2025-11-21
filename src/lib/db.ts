@@ -61,7 +61,12 @@ async function apiGet<T>(path: string): Promise<T> {
       `GET ${path} failed: ${res.status} ${res.statusText}\n${text}`
     );
   }
-  return (await res.json()) as T;
+  try {
+    return (await res.json()) as T;
+  } catch (error) {
+    const text = await res.text();
+    throw new Error(`Failed to parse JSON from ${path}: ${text.substring(0, 100)}`);
+  }
 }
 
 export async function listCountriesClient(): Promise<CountryRow[]> {
@@ -81,5 +86,12 @@ export async function getCountryWithProfileClient(
 }
 
 export async function listWasteFacilitiesClient(): Promise<WasteFacilityRow[]> {
-  return apiGet<WasteFacilityRow[]>("/api/waste-facilities");
+  try {
+    return await apiGet<WasteFacilityRow[]>("/api/waste-facilities");
+  } catch (error) {
+    // Fallback to local JSON for development
+    console.warn("API failed, loading from local JSON:", error);
+    const wasteData = await import("../data/source/waste_facilities.json");
+    return wasteData.default as WasteFacilityRow[];
+  }
 }

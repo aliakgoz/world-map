@@ -1,28 +1,28 @@
 // api/waste-facilities.ts
-import { dbQuery } from "./_db";
+import { neon } from "@neondatabase/serverless";
+import type { WasteFacilityRow } from "../src/lib/db";
+
+const sql = neon(process.env.DATABASE_URL!);
 
 export default async function handler(req: any, res: any) {
-    const method = req.method || "GET";
+    try {
+        if (req.method !== "GET") {
+            res.status(405).json({ error: "Method not allowed" });
+            return;
+        }
 
-    if (method === "GET") {
-        try {
-            const { rows } = await dbQuery(
-                `
-        SELECT id, iso3, name, site_name, facility_type, waste_level, 
+        const rows = await sql`SELECT id, iso3, name, site_name, facility_type, waste_level, 
                waste_types, status, commissioning_year, closure_year,
                latitude, longitude, source_cite
         FROM waste_facilities
-        ORDER BY name ASC;
-      `,
-                []
-            );
-            res.status(200).json(rows);
-        } catch (err: any) {
-            console.error("GET /waste-facilities error", err);
-            res.status(500).send("Error listing waste facilities");
-        }
-        return;
-    }
+        ORDER BY name ASC`;
 
-    res.status(405).send("Method not allowed");
+        res.status(200).json(rows);
+    } catch (err: any) {
+        console.error("api/waste-facilities error:", err);
+        res.status(500).json({
+            error: "Server error",
+            message: err.message ?? String(err),
+        });
+    }
 }

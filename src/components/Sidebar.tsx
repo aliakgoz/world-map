@@ -157,18 +157,6 @@ export function Sidebar({
 
 
             </div>
-
-            {/* Debug Info */}
-            <div className="mt-auto rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-                <div className="font-semibold mb-1 text-slate-700">
-                    Debug: DB Countries
-                </div>
-                <div className="text-[10px] break-words opacity-70">
-                    {dbCountries.length === 0
-                        ? "No DB data loaded."
-                        : `${dbCountries.length} countries loaded.`}
-                </div>
-            </div>
         </aside>
     );
 }
