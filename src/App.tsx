@@ -135,49 +135,65 @@ export default function InteractiveWorldMapApp() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-      <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur shrink-0">
-        <div className="mx-auto flex w-full max-w-[1920px] items-center gap-4 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
-              📊
-            </span>
-            <h1 className="text-xl font-semibold">
-              Status and Trends in Spent Fuel Management
+      <header className="border-b bg-white px-4 py-3 shadow-sm z-30 relative">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              World Nuclear Map
             </h1>
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="flex bg-slate-100 p-1 rounded-lg mx-4">
-            <button
-              onClick={() => setViewMode('map')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Map View
-            </button>
-            <button
-              onClick={() => setViewMode('statistics')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'statistics' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Statistics
-            </button>
-          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setViewMode('map')}
+                className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Map
+              </button>
+              <button
+                onClick={() => setViewMode('statistics')}
+                className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'statistics' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Stats
+              </button>
+            </div>
 
-          <div className="ml-auto flex items-center gap-3">
-            <input
-              type="text"
-              placeholder="Search country name or ISO code…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-72 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search country..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <svg className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 relative overflow-hidden">
+      <main className="flex-1 relative overflow-hidden flex flex-col md:flex-row">
         {viewMode === 'map' ? (
-          <div className="flex h-full">
-            <div className="flex-1 relative bg-slate-100">
+          <>
+            <div className="flex-1 relative bg-slate-100 h-[60vh] md:h-auto">
               <Map
                 dbCountries={dbCountries}
                 query={query}
@@ -213,7 +229,7 @@ export default function InteractiveWorldMapApp() {
               )}
             </div>
 
-            <div className="w-80 shrink-0 border-l bg-white p-4 overflow-y-auto z-20 shadow-xl">
+            <div className="w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l bg-white h-[40vh] md:h-full overflow-hidden z-20 shadow-xl flex flex-col">
               <Sidebar
                 dbCountries={dbCountries}
                 selectedTable={selectedTable}
@@ -224,7 +240,7 @@ export default function InteractiveWorldMapApp() {
                 setShowWaste={setShowWaste}
               />
             </div>
-          </div>
+          </>
         ) : (
           <div className="max-w-7xl mx-auto p-6">
             <StatisticsChart data={REACTOR_STATISTICS} />
