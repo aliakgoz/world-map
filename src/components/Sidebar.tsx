@@ -100,16 +100,20 @@ export function Sidebar({
                             <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Facility Type</h4>
                             <ul className="space-y-1.5">
                                 <li className="flex items-center gap-2 text-xs">
-                                    <span className="inline-block h-2.5 w-2.5 bg-orange-600 shadow-sm" />
+                                    <span className="inline-block h-2.5 w-2.5 bg-red-900 shadow-sm" />
                                     <span className="text-slate-600">Disposal</span>
                                 </li>
                                 <li className="flex items-center gap-2 text-xs">
-                                    <span className="inline-block h-2.5 w-2.5 bg-orange-500 shadow-sm" />
+                                    <span className="inline-block h-2.5 w-2.5 bg-blue-900 shadow-sm" />
                                     <span className="text-slate-600">Storage</span>
                                 </li>
                                 <li className="flex items-center gap-2 text-xs">
-                                    <span className="inline-block h-2.5 w-2.5 bg-orange-400 shadow-sm" />
+                                    <span className="inline-block h-2.5 w-2.5 bg-purple-900 shadow-sm" />
                                     <span className="text-slate-600">Interim Storage</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 bg-green-900 shadow-sm" />
+                                    <span className="text-slate-600">Other</span>
                                 </li>
                             </ul>
                         </div>
@@ -120,19 +124,19 @@ export function Sidebar({
                             <ul className="space-y-1.5">
                                 <li className="flex items-center gap-2 text-xs">
                                     <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 shadow-sm" />
-                                    <span className="text-slate-600">HLW (High-Level)</span>
+                                    <span className="text-slate-600">High Level / Spent Fuel</span>
+                                </li>
+                                <li className="flex items-center gap-2 text-xs">
+                                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-orange-500 shadow-sm" />
+                                    <span className="text-slate-600">Intermediate Level</span>
                                 </li>
                                 <li className="flex items-center gap-2 text-xs">
                                     <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-500 shadow-sm" />
-                                    <span className="text-slate-600">ILW (Intermediate)</span>
+                                    <span className="text-slate-600">Low Level</span>
                                 </li>
                                 <li className="flex items-center gap-2 text-xs">
-                                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 shadow-sm" />
-                                    <span className="text-slate-600">LLW (Low-Level)</span>
-                                </li>
-                                <li className="flex items-center gap-2 text-xs">
-                                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500 shadow-sm" />
-                                    <span className="text-slate-600">Spent Fuel</span>
+                                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-200 shadow-sm" />
+                                    <span className="text-slate-600">Very Low Level</span>
                                 </li>
                             </ul>
                         </div>

@@ -54,18 +54,20 @@ function getNPPColor(status: string): string {
 
 function getWasteColor(facility: WasteFacilityRow): string {
     const type = (facility.facility_type || "").toLowerCase();
-    if (type.includes("disposal")) return "#ea580c"; // orange-600
-    if (type.includes("interim")) return "#fb923c"; // orange-400
-    if (type.includes("storage")) return "#f97316"; // orange-500
-    return "#fdba74"; // orange-300
+    // Distinct colors for facility types (Square)
+    if (type.includes("disposal")) return "#7f1d1d"; // red-900 (Dark Red/Brown)
+    if (type.includes("interim")) return "#581c87"; // purple-900 (Dark Purple)
+    if (type.includes("storage")) return "#1e3a8a"; // blue-900 (Dark Blue)
+    return "#14532d"; // green-900 (Dark Green) - fallback
 }
 
 function getWasteLevelColor(facility: WasteFacilityRow): string {
     const level = (facility.waste_level || "").toLowerCase();
-    if (level.includes("high")) return "#b91c1c"; // red-700
-    if (level.includes("intermediate")) return "#c2410c"; // orange-700
-    if (level.includes("low")) return "#facc15"; // yellow-400
-    if (level.includes("very low")) return "#fef08a"; // yellow-200
+    // Map abbreviations and terms to colors (Circle Overlay)
+    if (level.includes("hlw") || level.includes("high") || level.includes("spent fuel")) return "#ef4444"; // red-500
+    if (level.includes("ilw") || level.includes("intermediate")) return "#f97316"; // orange-500
+    if (level.includes("llw") || level.includes("low")) return "#eab308"; // yellow-500
+    if (level.includes("vllw") || level.includes("very low")) return "#fef08a"; // yellow-200
     return "#9ca3af"; // gray-400
 }
 
@@ -187,7 +189,7 @@ export const Map = memo(function Map({
                     center={position.coordinates as [number, number]}
                     onMoveEnd={handleMoveEnd}
                     minZoom={0.75}
-                    maxZoom={6}
+                    maxZoom={12}
                     translateExtent={[
                         [-1000, -1000],
                         [1000, 1000],
