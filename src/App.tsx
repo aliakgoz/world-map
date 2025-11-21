@@ -78,8 +78,8 @@ export default function InteractiveWorldMapApp() {
 
       if (localProfile) {
         // Construct CountryWithProfile from local data
+        // Construct CountryWithProfile from local data
         const data: CountryWithProfile = {
-          iso3: localProfile.iso3,
           name: name,
           // Merge profile data
           ...localProfile,
