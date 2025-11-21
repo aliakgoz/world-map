@@ -32,6 +32,7 @@ type MapProps = {
     showNPP: boolean;
     showWaste: boolean;
     wasteFacilities: WasteFacilityRow[];
+    hover: { name: string; iso: string; x: number; y: number } | null;
 };
 
 // Simple color scale for data visualization
@@ -131,6 +132,7 @@ export const Map = memo(function Map({
     showNPP,
     showWaste,
     wasteFacilities,
+    hover,
 }: MapProps) {
     // Controlled zoom state
     const [position, setPosition] = useState({ coordinates: [0, 0], zoom: 1 });
@@ -150,7 +152,7 @@ export const Map = memo(function Map({
 
     // Calculate marker radius based on zoom to keep it visually consistent
     const markerRadius = useMemo(() => {
-        return 4 / position.zoom;
+        return 2.5 / position.zoom;
     }, [position.zoom]);
 
     // Cluster markers should be larger for better readability
@@ -320,31 +322,37 @@ export const Map = memo(function Map({
                                         const spiderLng = lng + Math.sin(angle) * offset;
 
                                         return (
-                                            <Marker
-                                                key={plant.Id}
-                                                coordinates={[spiderLng, spiderLat]}
-                                            >
-                                                <circle
-                                                    r={markerRadius}
-                                                    fill={getNPPColor(plant.Status)}
-                                                    style={{ transformBox: 'fill-box', cursor: 'pointer', pointerEvents: 'all' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        setSelectedPlant(plant);
-                                                    }}
-                                                    onMouseEnter={(event: React.MouseEvent<SVGCircleElement, MouseEvent>) => {
-                                                        const { clientX, clientY } = event;
-                                                        setHover({
-                                                            name: `${plant.Name} (${plant.Status})`,
-                                                            iso: plant.CountryCode,
-                                                            x: clientX,
-                                                            y: clientY,
-                                                        });
-                                                    }}
-                                                    onMouseLeave={() => setHover(null)}
-                                                />
-                                            </Marker>
+                                            <g key={plant.Id}>
+                                                <Marker
+                                                    coordinates={[spiderLng, spiderLat]}
+                                                >
+                                                    <circle
+                                                        r={markerRadius}
+                                                        fill={getNPPColor(plant.Status)}
+                                                        style={{
+                                                            transformBox: 'fill-box',
+                                                            cursor: 'pointer',
+                                                            pointerEvents: 'all',
+                                                            filter: hover?.name?.includes(plant.Name) ? "drop-shadow(0 0 6px rgba(255,255,255,0.8))" : "none"
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            setSelectedPlant(plant);
+                                                        }}
+                                                        onMouseEnter={(event: React.MouseEvent<SVGCircleElement, MouseEvent>) => {
+                                                            const { clientX, clientY } = event;
+                                                            setHover({
+                                                                name: `${plant.Name} (${plant.Status})`,
+                                                                iso: plant.CountryCode,
+                                                                x: clientX,
+                                                                y: clientY,
+                                                            });
+                                                        }}
+                                                        onMouseLeave={() => setHover(null)}
+                                                    />
+                                                </Marker>
+                                            </g>
                                         );
                                     })}
                                 </g>
@@ -425,45 +433,50 @@ export const Map = memo(function Map({
                                         const spiderLat = lat + Math.cos(angle) * offset;
                                         const spiderLng = lng + Math.sin(angle) * offset;
                                         return (
-                                            <Marker
-                                                key={`waste-${fac.id}`}
-                                                coordinates={[spiderLng, spiderLat]}
-                                            >
-                                                <g
-                                                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        setSelectedWaste(fac);
-                                                    }}
-                                                    onMouseEnter={(event: React.MouseEvent<SVGGElement, MouseEvent>) => {
-                                                        const { clientX, clientY } = event;
-                                                        setHover({
-                                                            name: `${fac.name} (${fac.facility_type})`,
-                                                            iso: fac.iso3,
-                                                            x: clientX,
-                                                            y: clientY,
-                                                        });
-                                                    }}
-                                                    onMouseLeave={() => setHover(null)}
+                                            <g key={`waste-${fac.id}`}>
+                                                <Marker
+                                                    coordinates={[spiderLng, spiderLat]}
                                                 >
-                                                    <rect
-                                                        width={markerRadius * 2}
-                                                        height={markerRadius * 2}
-                                                        x={-markerRadius}
-                                                        y={-markerRadius}
-                                                        fill={getWasteColor(fac)}
-                                                        stroke="#ffffff"
-                                                        strokeWidth={0.5 / position.zoom}
-                                                    />
-                                                    <circle
-                                                        r={markerRadius * 0.6}
-                                                        fill={getWasteLevelColor(fac)}
-                                                        stroke="#ffffff"
-                                                        strokeWidth={0.5 / position.zoom}
-                                                    />
-                                                </g>
-                                            </Marker>
+                                                    <g
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            pointerEvents: 'all',
+                                                            filter: hover?.name?.includes(fac.name) ? "drop-shadow(0 0 6px rgba(255,255,255,0.8))" : "none"
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            setSelectedWaste(fac);
+                                                        }}
+                                                        onMouseEnter={(event: React.MouseEvent<SVGGElement, MouseEvent>) => {
+                                                            const { clientX, clientY } = event;
+                                                            setHover({
+                                                                name: `${fac.name} (${fac.facility_type})`,
+                                                                iso: fac.iso3,
+                                                                x: clientX,
+                                                                y: clientY,
+                                                            });
+                                                        }}
+                                                        onMouseLeave={() => setHover(null)}
+                                                    >
+                                                        <rect
+                                                            width={markerRadius * 2}
+                                                            height={markerRadius * 2}
+                                                            x={-markerRadius}
+                                                            y={-markerRadius}
+                                                            fill={getWasteColor(fac)}
+                                                            stroke="#ffffff"
+                                                            strokeWidth={0.5 / position.zoom}
+                                                        />
+                                                        <circle
+                                                            r={markerRadius * 0.6}
+                                                            fill={getWasteLevelColor(fac)}
+                                                            stroke="#ffffff"
+                                                            strokeWidth={0.5 / position.zoom}
+                                                        />
+                                                    </g>
+                                                </Marker>
+                                            </g>
                                         );
                                     })}
                                 </g>

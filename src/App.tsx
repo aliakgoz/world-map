@@ -197,6 +197,7 @@ export default function InteractiveWorldMapApp() {
               <Map
                 dbCountries={dbCountries}
                 query={query}
+                hover={hover}
                 focusedIso={focusedIso}
                 setHover={setHover}
                 setSelected={setSelected}
