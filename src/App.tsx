@@ -53,6 +53,10 @@ export default function InteractiveWorldMapApp() {
   // View Mode State
   const [viewMode, setViewMode] = useState<'map' | 'statistics'>('map');
 
+  // Facilities State
+  const [showNPP, setShowNPP] = useState(false);
+  const [showWaste, setShowWaste] = useState(false);
+
   // Uygulama açılırken DB’deki ülke listesini al (API üzerinden Neon)
   useEffect(() => {
     (async () => {
@@ -77,7 +81,6 @@ export default function InteractiveWorldMapApp() {
       const localStats = REACTOR_STATISTICS.find(s => s.iso3 === iso3);
 
       if (localProfile) {
-        // Construct CountryWithProfile from local data
         // Construct CountryWithProfile from local data
         const data: CountryWithProfile = {
           name: name,
@@ -125,9 +128,9 @@ export default function InteractiveWorldMapApp() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+      <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur shrink-0">
+        <div className="mx-auto flex w-full max-w-[1920px] items-center gap-4 px-6 py-3">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
               📊
@@ -161,20 +164,14 @@ export default function InteractiveWorldMapApp() {
               onChange={(e) => setQuery(e.target.value)}
               className="w-72 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             />
-            <a
-              href="/admin"
-              className="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
-            >
-              Admin
-            </a>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl p-4">
+      <main className="flex-1 relative overflow-hidden">
         {viewMode === 'map' ? (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-            <div className="relative">
+          <div className="flex h-full">
+            <div className="flex-1 relative bg-slate-100">
               <Map
                 dbCountries={dbCountries}
                 query={query}
@@ -185,6 +182,7 @@ export default function InteractiveWorldMapApp() {
                 loadCountry={loadCountry}
                 // Pass visualization data
                 selectedTable={selectedTable}
+                showNPP={showNPP}
               />
               {hover && (
                 <Tooltip x={hover.x} y={hover.y}>
@@ -207,14 +205,22 @@ export default function InteractiveWorldMapApp() {
               )}
             </div>
 
-            <Sidebar
-              dbCountries={dbCountries}
-              selectedTable={selectedTable}
-              onSelectTable={setSelectedTable}
-            />
+            <div className="w-80 shrink-0 border-l bg-white p-4 overflow-y-auto z-20 shadow-xl">
+              <Sidebar
+                dbCountries={dbCountries}
+                selectedTable={selectedTable}
+                onSelectTable={setSelectedTable}
+                showNPP={showNPP}
+                setShowNPP={setShowNPP}
+                showWaste={showWaste}
+                setShowWaste={setShowWaste}
+              />
+            </div>
           </div>
         ) : (
-          <StatisticsChart data={REACTOR_STATISTICS} />
+          <div className="max-w-7xl mx-auto p-6">
+            <StatisticsChart data={REACTOR_STATISTICS} />
+          </div>
         )}
       </main>
 

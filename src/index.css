@@ -2,18 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root { height: 100%; }
+html,
+body,
+#root {
+  height: 100%;
+}
 
 @layer utilities {
   @keyframes pulseBlueSoft {
     0% {
-      fill: #e5e7eb; /* açık gri - default */
+      fill: #e5e7eb;
+      /* açık gri - default */
       opacity: 0.95;
     }
+
     50% {
-      fill: rgba(37, 99, 235, 0.35); /* biraz daha koyu soft mavi */
+      fill: rgba(37, 99, 235, 0.35);
+      /* biraz daha koyu soft mavi */
       opacity: 1;
     }
+
     100% {
       fill: #e5e7eb;
       opacity: 0.95;

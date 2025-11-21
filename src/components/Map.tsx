@@ -10,6 +10,7 @@ import { RSMFeature } from "../types";
 import { WORLD_TOPO_JSON, CONTINENT_COLORS, NAME_TO_ISO3 } from "../constants";
 import { CountryRow } from "../lib/db";
 import { ReportTable } from "../types/report";
+import { NUCLEAR_POWER_PLANTS } from "../data/npp_data";
 
 type MapProps = {
     dbCountries: CountryRow[];
@@ -26,6 +27,7 @@ type MapProps = {
     setFocusedIso: (iso: string | null) => void;
     loadCountry: (iso: string, name: string) => void;
     selectedTable: ReportTable | null;
+    showNPP: boolean;
 };
 
 // Simple color scale for data visualization
@@ -45,6 +47,14 @@ function getDataColor(value: number, max: number): string {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
+function getNPPColor(status: string): string {
+    const s = status.toLowerCase();
+    if (s.includes("operational")) return "#22c55e"; // green-500
+    if (s.includes("construction")) return "#eab308"; // yellow-500
+    if (s.includes("shutdown") || s.includes("decommissioning")) return "#ef4444"; // red-500
+    return "#9ca3af"; // gray-400
+}
+
 export const Map = memo(function Map({
     dbCountries,
     query,
@@ -54,6 +64,7 @@ export const Map = memo(function Map({
     setFocusedIso,
     loadCountry,
     selectedTable,
+    showNPP,
 }: MapProps) {
     // Calculate max value for the current table to scale colors
     const maxValue = useMemo(() => {
@@ -66,7 +77,7 @@ export const Map = memo(function Map({
     }, [selectedTable]);
 
     return (
-        <div className="relative h-[600px] rounded-2xl bg-white p-2 shadow-sm ring-1 ring-black/5">
+        <div className="relative h-full w-full bg-slate-100">
             <ComposableMap
                 projectionConfig={{ scale: 160 }}
                 className="h-full w-full"
@@ -192,6 +203,35 @@ export const Map = memo(function Map({
                             })
                         }
                     </Geographies>
+
+                    {/* NPP Markers */}
+                    {showNPP && NUCLEAR_POWER_PLANTS.map((plant) => {
+                        if (!plant.Latitude || !plant.Longitude) return null;
+                        return (
+                            <Marker
+                                key={plant.Id}
+                                coordinates={[plant.Longitude, plant.Latitude]}
+                            >
+                                <circle
+                                    r={2}
+                                    fill={getNPPColor(plant.Status)}
+                                    className="animate-heartbeat"
+                                    style={{ transformBox: 'fill-box', cursor: 'pointer' }}
+                                    onMouseEnter={(event: React.MouseEvent<SVGCircleElement, MouseEvent>) => {
+                                        const { clientX, clientY } = event;
+                                        setHover({
+                                            name: `${plant.Name} (${plant.Status})`,
+                                            iso: plant.CountryCode,
+                                            x: clientX,
+                                            y: clientY,
+                                        });
+                                    }}
+                                    onMouseLeave={() => setHover(null)}
+                                />
+                            </Marker>
+                        );
+                    })}
+
                 </ZoomableGroup>
             </ComposableMap>
         </div>

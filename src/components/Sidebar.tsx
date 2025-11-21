@@ -1,37 +1,61 @@
 import React from "react";
 import { CONTINENT_COLORS } from "../constants";
 import { CountryRow } from "../lib/db";
-import { REPORT_TABLES } from "../data/reportData";
 import { ReportTable } from "../types/report";
 
 type SidebarProps = {
     dbCountries: CountryRow[];
     selectedTable: ReportTable | null;
     onSelectTable: (table: ReportTable) => void;
+    showNPP: boolean;
+    setShowNPP: (show: boolean) => void;
+    showWaste: boolean;
+    setShowWaste: (show: boolean) => void;
 };
 
-export function Sidebar({ dbCountries, selectedTable, onSelectTable }: SidebarProps) {
+export function Sidebar({
+    dbCountries,
+    selectedTable,
+    onSelectTable,
+    showNPP,
+    setShowNPP,
+    showWaste,
+    setShowWaste
+}: SidebarProps) {
     return (
         <aside className="flex flex-col gap-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 h-full overflow-y-auto">
 
-            {/* Report Tables Menu */}
+            {/* Facilities Toggles */}
             <div>
                 <h2 className="mb-3 text-base font-semibold text-slate-900">
-                    Report Tables
+                    Facilities
                 </h2>
-                <div className="flex flex-col gap-2">
-                    {REPORT_TABLES.map((table) => (
-                        <button
-                            key={table.id}
-                            onClick={() => onSelectTable(table)}
-                            className={`text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedTable?.id === table.id
-                                    ? "bg-blue-50 text-blue-700 font-medium ring-1 ring-blue-200"
-                                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                                }`}
-                        >
-                            {table.title}
-                        </button>
-                    ))}
+                <div className="flex flex-col gap-3">
+                    <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={showNPP}
+                            onChange={(e) => setShowNPP(e.target.checked)}
+                            className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-900">Nuclear Power Plants</span>
+                            <span className="text-xs text-slate-500">Operational, Construction, Shutdown</span>
+                        </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={showWaste}
+                            onChange={(e) => setShowWaste(e.target.checked)}
+                            className="w-5 h-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                        />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-900">Radioactive Waste Facilities</span>
+                            <span className="text-xs text-slate-500">Storage & Disposal Sites (Coming Soon)</span>
+                        </div>
+                    </label>
                 </div>
             </div>
 
@@ -40,8 +64,34 @@ export function Sidebar({ dbCountries, selectedTable, onSelectTable }: SidebarPr
             {/* Legend */}
             <div>
                 <h2 className="mb-3 text-base font-semibold text-slate-900">
-                    Legend (Continents)
+                    Legend
                 </h2>
+
+                {showNPP && (
+                    <div className="mb-4">
+                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Nuclear Power Plants</h3>
+                        <ul className="space-y-2">
+                            <li className="flex items-center gap-3 text-sm">
+                                <span className="inline-block h-3 w-3 rounded-full bg-green-500 shadow-sm animate-pulse" />
+                                <span className="text-slate-600">Operational</span>
+                            </li>
+                            <li className="flex items-center gap-3 text-sm">
+                                <span className="inline-block h-3 w-3 rounded-full bg-yellow-500 shadow-sm" />
+                                <span className="text-slate-600">Under Construction</span>
+                            </li>
+                            <li className="flex items-center gap-3 text-sm">
+                                <span className="inline-block h-3 w-3 rounded-full bg-red-500 shadow-sm" />
+                                <span className="text-slate-600">Shutdown / Decommissioning</span>
+                            </li>
+                            <li className="flex items-center gap-3 text-sm">
+                                <span className="inline-block h-3 w-3 rounded-full bg-gray-400 shadow-sm" />
+                                <span className="text-slate-600">Planned / Other</span>
+                            </li>
+                        </ul>
+                    </div>
+                )}
+
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Continents</h3>
                 <ul className="space-y-2">
                     {Object.entries(CONTINENT_COLORS).map(([continent, color]) => (
                         <li key={continent} className="flex items-center gap-3 text-sm">
@@ -57,9 +107,6 @@ export function Sidebar({ dbCountries, selectedTable, onSelectTable }: SidebarPr
 
             {/* Debug Info */}
             <div className="mt-auto rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-                <p className="mb-2">
-                    Select a table above to visualize data from the <i>Status and Trends</i> report.
-                </p>
                 <div className="font-semibold mb-1 text-slate-700">
                     Debug: DB Countries
                 </div>
