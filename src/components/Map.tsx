@@ -60,6 +60,15 @@ function getWasteColor(facility: WasteFacilityRow): string {
     return "#fdba74"; // orange-300
 }
 
+function getWasteLevelColor(facility: WasteFacilityRow): string {
+    const level = (facility.waste_level || "").toLowerCase();
+    if (level.includes("high")) return "#b91c1c"; // red-700
+    if (level.includes("intermediate")) return "#c2410c"; // orange-700
+    if (level.includes("low")) return "#facc15"; // yellow-400
+    if (level.includes("very low")) return "#fef08a"; // yellow-200
+    return "#9ca3af"; // gray-400
+}
+
 function getClusterColor(facilities: WasteFacilityRow[]): string {
     const counts: Record<string, number> = {};
     facilities.forEach(f => {
@@ -78,24 +87,30 @@ function getNPPClusterColor(plants: NuclearPlant[]): string {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
 }
 
-// Helper to group plants by location
+// Helper to group plants by location (proximity clustering)
 const groupPlantsByLocation = (plants: NuclearPlant[]) => {
     const groups: Record<string, NuclearPlant[]> = {};
     plants.forEach(plant => {
         if (!plant.Latitude || !plant.Longitude) return;
-        const key = `${plant.Latitude},${plant.Longitude}`;
+        // Round to nearest 0.5 degree to group nearby plants
+        const lat = Math.round(plant.Latitude * 2) / 2;
+        const lng = Math.round(plant.Longitude * 2) / 2;
+        const key = `${lat},${lng}`;
         if (!groups[key]) groups[key] = [];
         groups[key].push(plant);
     });
     return groups;
 };
 
-// Helper to group waste facilities by location
+// Helper to group waste facilities by location (proximity clustering)
 const groupWasteByLocation = (facilities: WasteFacilityRow[]) => {
     const groups: Record<string, WasteFacilityRow[]> = {};
     facilities.forEach(fac => {
         if (!fac.latitude || !fac.longitude) return;
-        const key = `${fac.latitude},${fac.longitude}`;
+        // Round to nearest 0.5 degree to group nearby facilities
+        const lat = Math.round(fac.latitude * 2) / 2;
+        const lng = Math.round(fac.longitude * 2) / 2;
+        const key = `${lat},${lng}`;
         if (!groups[key]) groups[key] = [];
         groups[key].push(fac);
     });
@@ -298,7 +313,7 @@ export const Map = memo(function Map({
                                 <g key={key} onMouseLeave={() => setHoveredCluster(null)}>
                                     {plants.map((plant, index) => {
                                         const angle = (index / plants.length) * 2 * Math.PI;
-                                        const offset = 1.5 / position.zoom;
+                                        const offset = 2.5 / position.zoom;
                                         const spiderLat = lat + Math.cos(angle) * offset;
                                         const spiderLng = lng + Math.sin(angle) * offset;
 
@@ -368,7 +383,7 @@ export const Map = memo(function Map({
                                         r={isCluster ? clusterRadius : markerRadius}
                                         fill={isCluster ? getNPPClusterColor(plants) : getNPPColor(plants[0].Status)}
                                         stroke={isCluster ? "#ffffff" : "none"}
-                                        strokeWidth={isCluster ? 2 / position.zoom : 0}
+                                        strokeWidth={isCluster ? 1 / position.zoom : 0}
                                         style={{ transformBox: 'fill-box' }}
                                     />
                                     {isCluster && (
@@ -404,7 +419,7 @@ export const Map = memo(function Map({
                                 <g key={`waste-${key}`} onMouseLeave={() => setHoveredCluster(null)}>
                                     {facilities.map((fac, index) => {
                                         const angle = (index / facilities.length) * 2 * Math.PI;
-                                        const offset = 1.5 / position.zoom;
+                                        const offset = 2.5 / position.zoom;
                                         const spiderLat = lat + Math.cos(angle) * offset;
                                         const spiderLng = lng + Math.sin(angle) * offset;
                                         return (
@@ -412,19 +427,14 @@ export const Map = memo(function Map({
                                                 key={`waste-${fac.id}`}
                                                 coordinates={[spiderLng, spiderLat]}
                                             >
-                                                <rect
-                                                    width={markerRadius * 2}
-                                                    height={markerRadius * 2}
-                                                    x={-markerRadius}
-                                                    y={-markerRadius}
-                                                    fill={getWasteColor(fac)}
-                                                    style={{ transformBox: 'fill-box', cursor: 'pointer', pointerEvents: 'all' }}
+                                                <g
+                                                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         e.preventDefault();
                                                         setSelectedWaste(fac);
                                                     }}
-                                                    onMouseEnter={(event: React.MouseEvent<SVGElement, MouseEvent>) => {
+                                                    onMouseEnter={(event: React.MouseEvent<SVGGElement, MouseEvent>) => {
                                                         const { clientX, clientY } = event;
                                                         setHover({
                                                             name: `${fac.name} (${fac.facility_type})`,
@@ -434,7 +444,23 @@ export const Map = memo(function Map({
                                                         });
                                                     }}
                                                     onMouseLeave={() => setHover(null)}
-                                                />
+                                                >
+                                                    <rect
+                                                        width={markerRadius * 2}
+                                                        height={markerRadius * 2}
+                                                        x={-markerRadius}
+                                                        y={-markerRadius}
+                                                        fill={getWasteColor(fac)}
+                                                        stroke="#ffffff"
+                                                        strokeWidth={0.5 / position.zoom}
+                                                    />
+                                                    <circle
+                                                        r={markerRadius * 0.6}
+                                                        fill={getWasteLevelColor(fac)}
+                                                        stroke="#ffffff"
+                                                        strokeWidth={0.5 / position.zoom}
+                                                    />
+                                                </g>
                                             </Marker>
                                         );
                                     })}
@@ -472,37 +498,55 @@ export const Map = memo(function Map({
                                     }}
                                     style={{ cursor: 'pointer', pointerEvents: 'all' }}
                                 >
-                                    <rect
-                                        width={(isCluster ? clusterRadius : markerRadius) * 2}
-                                        height={(isCluster ? clusterRadius : markerRadius) * 2}
-                                        x={-(isCluster ? clusterRadius : markerRadius)}
-                                        y={-(isCluster ? clusterRadius : markerRadius)}
-                                        fill={isCluster ? getClusterColor(facilities) : getWasteColor(facilities[0])}
-                                        stroke={isCluster ? "#ffffff" : "none"}
-                                        strokeWidth={isCluster ? 2 / position.zoom : 0}
-                                        style={{ transformBox: 'fill-box' }}
-                                    />
-                                    {isCluster && (
-                                        <text
-                                            textAnchor="middle"
-                                            y={clusterRadius * 0.35}
-                                            style={{
-                                                fontFamily: "system-ui",
-                                                fill: "#ffffff",
-                                                fontSize: clusterRadius * 0.9,
-                                                fontWeight: "bold",
-                                                pointerEvents: "none",
-                                                textShadow: "0px 0px 2px rgba(0,0,0,0.5)"
-                                            }}
-                                        >
-                                            {facilities.length}
-                                        </text>
+                                    {isCluster ? (
+                                        <>
+                                            <rect
+                                                width={clusterRadius * 2}
+                                                height={clusterRadius * 2}
+                                                x={-clusterRadius}
+                                                y={-clusterRadius}
+                                                fill={getClusterColor(facilities)}
+                                                stroke="#ffffff"
+                                                strokeWidth={1 / position.zoom}
+                                            />
+                                            <text
+                                                textAnchor="middle"
+                                                y={clusterRadius * 0.35}
+                                                style={{
+                                                    fontFamily: "system-ui",
+                                                    fill: "#ffffff",
+                                                    fontSize: clusterRadius * 0.9,
+                                                    fontWeight: "bold",
+                                                    pointerEvents: "none",
+                                                    textShadow: "0px 0px 2px rgba(0,0,0,0.5)"
+                                                }}
+                                            >
+                                                {facilities.length}
+                                            </text>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <rect
+                                                width={markerRadius * 2}
+                                                height={markerRadius * 2}
+                                                x={-markerRadius}
+                                                y={-markerRadius}
+                                                fill={getWasteColor(facilities[0])}
+                                                stroke="#ffffff"
+                                                strokeWidth={0.5 / position.zoom}
+                                            />
+                                            <circle
+                                                r={markerRadius * 0.6}
+                                                fill={getWasteLevelColor(facilities[0])}
+                                                stroke="#ffffff"
+                                                strokeWidth={0.5 / position.zoom}
+                                            />
+                                        </>
                                     )}
                                 </g>
                             </Marker>
                         );
                     })}
-
                 </ZoomableGroup>
             </ComposableMap>
         </div>
