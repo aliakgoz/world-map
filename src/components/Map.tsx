@@ -315,7 +315,7 @@ export const Map = memo(function Map({
                                 <g key={key} onMouseLeave={() => setHoveredCluster(null)}>
                                     {plants.map((plant, index) => {
                                         const angle = (index / plants.length) * 2 * Math.PI;
-                                        const offset = 2.5 / position.zoom;
+                                        const offset = 5.5 / position.zoom;
                                         const spiderLat = lat + Math.cos(angle) * offset;
                                         const spiderLng = lng + Math.sin(angle) * offset;
 
@@ -421,7 +421,7 @@ export const Map = memo(function Map({
                                 <g key={`waste-${key}`} onMouseLeave={() => setHoveredCluster(null)}>
                                     {facilities.map((fac, index) => {
                                         const angle = (index / facilities.length) * 2 * Math.PI;
-                                        const offset = 2.5 / position.zoom;
+                                        const offset = 5.5 / position.zoom;
                                         const spiderLat = lat + Math.cos(angle) * offset;
                                         const spiderLng = lng + Math.sin(angle) * offset;
                                         return (
