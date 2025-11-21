@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import {
     ComposableMap,
     Geographies,
@@ -66,6 +66,9 @@ export const Map = memo(function Map({
     selectedTable,
     showNPP,
 }: MapProps) {
+    // Controlled zoom state
+    const [position, setPosition] = useState({ coordinates: [0, 20], zoom: 1 });
+
     // Calculate max value for the current table to scale colors
     const maxValue = useMemo(() => {
         if (!selectedTable || !selectedTable.valueKey) return 0;
@@ -76,6 +79,16 @@ export const Map = memo(function Map({
         );
     }, [selectedTable]);
 
+    // Calculate marker radius based on zoom to keep it visually consistent
+    // Base radius 2 at zoom 1. As zoom increases, radius decreases.
+    const markerRadius = useMemo(() => {
+        return 2 / position.zoom;
+    }, [position.zoom]);
+
+    function handleMoveEnd(position: { coordinates: [number, number]; zoom: number }) {
+        setPosition(position);
+    }
+
     return (
         <div className="relative h-full w-full bg-slate-100">
             <ComposableMap
@@ -83,8 +96,9 @@ export const Map = memo(function Map({
                 className="h-full w-full"
             >
                 <ZoomableGroup
-                    center={[0, 20]}
-                    zoom={1}
+                    zoom={position.zoom}
+                    center={position.coordinates as [number, number]}
+                    onMoveEnd={handleMoveEnd}
                     minZoom={0.75}
                     maxZoom={6}
                     translateExtent={[
@@ -213,7 +227,7 @@ export const Map = memo(function Map({
                                 coordinates={[plant.Longitude, plant.Latitude]}
                             >
                                 <circle
-                                    r={2}
+                                    r={markerRadius}
                                     fill={getNPPColor(plant.Status)}
                                     className="animate-heartbeat"
                                     style={{ transformBox: 'fill-box', cursor: 'pointer' }}

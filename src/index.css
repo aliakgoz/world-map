@@ -31,4 +31,26 @@ body,
   .has-db {
     animation: pulseBlueSoft 2.4s ease-in-out infinite;
   }
+
+  @keyframes heartbeat {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    50% {
+      transform: scale(1.5);
+      opacity: 0.8;
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-heartbeat {
+    animation: heartbeat 2s infinite ease-in-out;
+    transform-origin: center;
+  }
 }

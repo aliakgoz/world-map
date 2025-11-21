@@ -91,18 +91,8 @@ export function Sidebar({
                     </div>
                 )}
 
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Continents</h3>
-                <ul className="space-y-2">
-                    {Object.entries(CONTINENT_COLORS).map(([continent, color]) => (
-                        <li key={continent} className="flex items-center gap-3 text-sm">
-                            <span
-                                className="inline-block h-3 w-3 rounded-sm shadow-sm"
-                                style={{ backgroundColor: color }}
-                            />
-                            <span className="text-slate-600">{continent}</span>
-                        </li>
-                    ))}
-                </ul>
+
+                {/* Continents Legend Removed */}
             </div>
 
             {/* Debug Info */}
