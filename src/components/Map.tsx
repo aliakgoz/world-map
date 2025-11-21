@@ -10,7 +10,8 @@ import { RSMFeature } from "../types";
 import { WORLD_TOPO_JSON, CONTINENT_COLORS, NAME_TO_ISO3 } from "../constants";
 import { CountryRow } from "../lib/db";
 import { ReportTable } from "../types/report";
-import { NUCLEAR_POWER_PLANTS } from "../data/npp_data";
+import { NUCLEAR_POWER_PLANTS, NuclearPlant } from "../data/npp_data";
+import { PlantPopup } from "./PlantPopup";
 
 type MapProps = {
     dbCountries: CountryRow[];
@@ -55,6 +56,18 @@ function getNPPColor(status: string): string {
     return "#9ca3af"; // gray-400
 }
 
+// Helper to group plants by location
+const groupPlantsByLocation = (plants: NuclearPlant[]) => {
+    const groups: Record<string, NuclearPlant[]> = {};
+    plants.forEach(plant => {
+        if (!plant.Latitude || !plant.Longitude) return;
+        const key = `${plant.Latitude},${plant.Longitude}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(plant);
+    });
+    return groups;
+};
+
 export const Map = memo(function Map({
     dbCountries,
     query,
@@ -68,6 +81,8 @@ export const Map = memo(function Map({
 }: MapProps) {
     // Controlled zoom state
     const [position, setPosition] = useState({ coordinates: [0, 20], zoom: 1 });
+    const [selectedPlant, setSelectedPlant] = useState<NuclearPlant | null>(null);
+    const [hoveredCluster, setHoveredCluster] = useState<string | null>(null);
 
     // Calculate max value for the current table to scale colors
     const maxValue = useMemo(() => {
@@ -85,12 +100,21 @@ export const Map = memo(function Map({
         return 2 / position.zoom;
     }, [position.zoom]);
 
+    const groupedPlants = useMemo(() => groupPlantsByLocation(NUCLEAR_POWER_PLANTS), []);
+
     function handleMoveEnd(position: { coordinates: [number, number]; zoom: number }) {
         setPosition(position);
     }
 
     return (
         <div className="relative h-full w-full bg-slate-100">
+            {selectedPlant && (
+                <PlantPopup
+                    plant={selectedPlant}
+                    onClose={() => setSelectedPlant(null)}
+                />
+            )}
+
             <ComposableMap
                 projectionConfig={{ scale: 160 }}
                 className="h-full w-full"
@@ -218,30 +242,111 @@ export const Map = memo(function Map({
                         }
                     </Geographies>
 
-                    {/* NPP Markers */}
-                    {showNPP && NUCLEAR_POWER_PLANTS.map((plant) => {
-                        if (!plant.Latitude || !plant.Longitude) return null;
+                    {/* NPP Markers with Clustering/Spiderify */}
+                    {showNPP && Object.entries(groupedPlants).map(([key, plants]) => {
+                        const [lat, lng] = key.split(',').map(Number);
+                        const isCluster = plants.length > 1;
+                        const isHovered = hoveredCluster === key;
+                        // Spiderify only at higher zoom levels (e.g., >= 3) and when hovered
+                        const shouldSpiderify = isCluster && position.zoom >= 3 && isHovered;
+
+                        if (shouldSpiderify) {
+                            // Render spiderified markers
+                            return (
+                                <g key={key} onMouseLeave={() => setHoveredCluster(null)}>
+                                    {plants.map((plant, index) => {
+                                        // Calculate offset in degrees
+                                        const angle = (index / plants.length) * 2 * Math.PI;
+                                        const offset = 1.5 / position.zoom; // Dynamic offset
+                                        const spiderLat = lat + Math.cos(angle) * offset;
+                                        const spiderLng = lng + Math.sin(angle) * offset;
+
+                                        return (
+                                            <Marker
+                                                key={plant.Id}
+                                                coordinates={[spiderLng, spiderLat]}
+                                            >
+                                                <circle
+                                                    r={markerRadius}
+                                                    fill={getNPPColor(plant.Status)}
+                                                    className="animate-heartbeat"
+                                                    style={{ transformBox: 'fill-box', cursor: 'pointer' }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedPlant(plant);
+                                                    }}
+                                                    onMouseEnter={(event: React.MouseEvent<SVGCircleElement, MouseEvent>) => {
+                                                        const { clientX, clientY } = event;
+                                                        setHover({
+                                                            name: `${plant.Name} (${plant.Status})`,
+                                                            iso: plant.CountryCode,
+                                                            x: clientX,
+                                                            y: clientY,
+                                                        });
+                                                    }}
+                                                    onMouseLeave={() => setHover(null)}
+                                                />
+                                            </Marker>
+                                        );
+                                    })}
+                                </g>
+                            );
+                        }
+
+                        // Render single marker or cluster center
                         return (
                             <Marker
-                                key={plant.Id}
-                                coordinates={[plant.Longitude, plant.Latitude]}
+                                key={key}
+                                coordinates={[lng, lat]}
                             >
-                                <circle
-                                    r={markerRadius}
-                                    fill={getNPPColor(plant.Status)}
-                                    className="animate-heartbeat"
-                                    style={{ transformBox: 'fill-box', cursor: 'pointer' }}
-                                    onMouseEnter={(event: React.MouseEvent<SVGCircleElement, MouseEvent>) => {
-                                        const { clientX, clientY } = event;
-                                        setHover({
-                                            name: `${plant.Name} (${plant.Status})`,
-                                            iso: plant.CountryCode,
-                                            x: clientX,
-                                            y: clientY,
-                                        });
+                                <g
+                                    onMouseEnter={(event: React.MouseEvent<SVGGElement, MouseEvent>) => {
+                                        if (isCluster) {
+                                            setHoveredCluster(key);
+                                        } else {
+                                            // Standard hover for single plant
+                                            const plant = plants[0];
+                                            const { clientX, clientY } = event;
+                                            setHover({
+                                                name: `${plant.Name} (${plant.Status})`,
+                                                iso: plant.CountryCode,
+                                                x: clientX,
+                                                y: clientY,
+                                            });
+                                        }
                                     }}
                                     onMouseLeave={() => setHover(null)}
-                                />
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isCluster) {
+                                            setSelectedPlant(plants[0]);
+                                        }
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <circle
+                                        r={markerRadius}
+                                        fill={isCluster ? "#ffffff" : getNPPColor(plants[0].Status)}
+                                        stroke={isCluster ? "#334155" : "none"}
+                                        strokeWidth={isCluster ? 0.5 : 0}
+                                        className={!isCluster ? "animate-heartbeat" : ""}
+                                    />
+                                    {isCluster && (
+                                        <text
+                                            textAnchor="middle"
+                                            y={markerRadius / 2} // Center vertically roughly
+                                            style={{
+                                                fontFamily: "system-ui",
+                                                fill: "#334155",
+                                                fontSize: markerRadius * 1.5,
+                                                fontWeight: "bold",
+                                                pointerEvents: "none"
+                                            }}
+                                        >
+                                            {plants.length}
+                                        </text>
+                                    )}
+                                </g>
                             </Marker>
                         );
                     })}
