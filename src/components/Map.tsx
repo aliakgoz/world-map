@@ -109,6 +109,11 @@ export const Map = memo(function Map({
         return 2 / position.zoom;
     }, [position.zoom]);
 
+    // Cluster markers should be larger for better readability
+    const clusterRadius = useMemo(() => {
+        return markerRadius * 1.8;
+    }, [markerRadius]);
+
     const groupedPlants = useMemo(() => groupPlantsByLocation(NUCLEAR_POWER_PLANTS), []);
     const groupedWaste = useMemo(() => groupWasteByLocation(WASTE_FACILITIES), []);
 
@@ -333,20 +338,20 @@ export const Map = memo(function Map({
                                     style={{ cursor: 'pointer', pointerEvents: 'all' }}
                                 >
                                     <circle
-                                        r={markerRadius}
+                                        r={isCluster ? clusterRadius : markerRadius}
                                         fill={isCluster ? "#ffffff" : getNPPColor(plants[0].Status)}
                                         stroke={isCluster ? "#334155" : "none"}
-                                        strokeWidth={isCluster ? 0.5 : 0}
+                                        strokeWidth={isCluster ? 0.3 / position.zoom : 0}
                                         style={{ transformBox: 'fill-box' }}
                                     />
                                     {isCluster && (
                                         <text
                                             textAnchor="middle"
-                                            y={markerRadius / 2}
+                                            y={clusterRadius * 0.35}
                                             style={{
                                                 fontFamily: "system-ui",
                                                 fill: "#334155",
-                                                fontSize: markerRadius * 1.5,
+                                                fontSize: clusterRadius * 0.9,
                                                 fontWeight: "bold",
                                                 pointerEvents: "none"
                                             }}
@@ -441,23 +446,23 @@ export const Map = memo(function Map({
                                     style={{ cursor: 'pointer', pointerEvents: 'all' }}
                                 >
                                     <rect
-                                        width={markerRadius * 2}
-                                        height={markerRadius * 2}
-                                        x={-markerRadius}
-                                        y={-markerRadius}
+                                        width={isCluster ? clusterRadius * 2 : markerRadius * 2}
+                                        height={isCluster ? clusterRadius * 2 : markerRadius * 2}
+                                        x={isCluster ? -clusterRadius : -markerRadius}
+                                        y={isCluster ? -clusterRadius : -markerRadius}
                                         fill={isCluster ? "#ffffff" : "#f97316"}
                                         stroke={isCluster ? "#c2410c" : "none"}
-                                        strokeWidth={isCluster ? 0.5 : 0}
+                                        strokeWidth={isCluster ? 0.3 / position.zoom : 0}
                                         style={{ transformBox: 'fill-box' }}
                                     />
                                     {isCluster && (
                                         <text
                                             textAnchor="middle"
-                                            y={markerRadius / 2}
+                                            y={clusterRadius * 0.35}
                                             style={{
                                                 fontFamily: "system-ui",
                                                 fill: "#c2410c",
-                                                fontSize: markerRadius * 1.5,
+                                                fontSize: clusterRadius * 0.9,
                                                 fontWeight: "bold",
                                                 pointerEvents: "none"
                                             }}
